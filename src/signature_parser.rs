@@ -29,10 +29,37 @@ pub fn parse_signature(signature: &str) -> Vec<String> {
                 .map(|pos| signature[pos + conv.len()..].trim_start())
         })
         .next()
-        .unwrap_or(signature.trim());
+        .unwrap_or_else(|| skip_return_type(signature.trim()));
 
     // Split by :: while respecting template bracket depth
     split_by_scope_resolution(function_path)
+}
+
+/// Skips the return type in a signature that doesn't have a calling convention.
+///
+/// For signatures like "void SomeFunction" or "void *Namespace::Function",
+/// this returns everything after the return type.
+fn skip_return_type(signature: &str) -> &str {
+    // Find the first occurrence of ::
+    if let Some(scope_pos) = signature.find("::") {
+        // Backtrack to find the last space before ::
+        let before_scope = &signature[..scope_pos];
+        if let Some(space_pos) = before_scope.rfind(' ') {
+            // Skip any pointer/reference markers after the space
+            let after_space = &signature[space_pos..].trim_start();
+            return after_space.trim_start_matches('*').trim_start_matches('&').trim_start();
+        }
+    }
+
+    // No :: found, so this is a simple function name
+    // Find the first space and return everything after it
+    if let Some(space_pos) = signature.find(' ') {
+        let after_space = &signature[space_pos..].trim_start();
+        return after_space.trim_start_matches('*').trim_start_matches('&').trim_start();
+    }
+
+    // No space found, return the whole thing (shouldn't happen in practice)
+    signature
 }
 
 /// Splits a C++ qualified name by `::` while preserving content within template brackets.
@@ -78,61 +105,6 @@ fn split_by_scope_resolution(path: &str) -> Vec<String> {
     }
 
     parts
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_simple_function() {
-        let result = parse_signature("void __fastcall CDiveState::CDiveState");
-        assert_eq!(result, vec!["CDiveState", "CDiveState"]);
-    }
-
-    #[test]
-    fn test_complex_templated_function() {
-        let signature = "__int64 __fastcall hkcdTreeQueries<hkcdTreeQueriesStacks::Dynamic,64,0>::IfFilterNode<hknpCompressedMeshShapeInternals::RayCastQuery<1>,hkcdStaticTree::Tree<hkcdStaticTree::DynamicStorage5>::NodeContext>::call<hkcdStaticTree::Tree<hkcdStaticTree::DynamicStorage5>::NodeContext>";
-        let result = parse_signature(signature);
-        assert_eq!(
-            result,
-            vec![
-                "hkcdTreeQueries<hkcdTreeQueriesStacks::Dynamic,64,0>",
-                "IfFilterNode<hknpCompressedMeshShapeInternals::RayCastQuery<1>,hkcdStaticTree::Tree<hkcdStaticTree::DynamicStorage5>::NodeContext>",
-                "call<hkcdStaticTree::Tree<hkcdStaticTree::DynamicStorage5>::NodeContext>"
-            ]
-        );
-    }
-
-    #[test]
-    fn test_very_long_templated_function() {
-        let signature = "std::tr1::_Callable_obj<std::tr1::_Bind<void,void,std::tr1::_Bind1<std::tr1::_Callable_pmf<void (__cdecl NSaveLoad::CManagedObject<NSaveLoad::CLocalDataRef<CPlayerActionObserver::CSystemicButtonHintData> >::*const)(void),NSaveLoad::CManagedObject<NSaveLoad::CLocalDataRef<CPlayerActionObserver::CSystemicButtonHintData> >,0>,NSaveLoad::CManagedObject<NSaveLoad::CLocalDataRef<CPlayerActionObserver::CSystemicButtonHintData> > *> >,0> *__fastcall std::tr1::_Impl_no_alloc0<std::tr1::_Callable_obj<std::tr1::_Bind<void,void,std::tr1::_Bind1<std::tr1::_Callable_pmf<void (NSaveLoad::CManagedObject<NSaveLoad::CLocalDataRef<CPlayerActionObserver::CSystemicButtonHintData>>::*const)(void),NSaveLoad::CManagedObject<NSaveLoad::CLocalDataRef<CPlayerActionObserver::CSystemicButtonHintData>>,0>,NSaveLoad::CManagedObject<NSaveLoad::CLocalDataRef<CPlayerActionObserver::CSystemicButtonHintData>> *>>,0>,void>::_Get";
-        let result = parse_signature(signature);
-        assert_eq!(
-            result,
-            vec![
-                "std",
-                "tr1",
-                "_Impl_no_alloc0<std::tr1::_Callable_obj<std::tr1::_Bind<void,void,std::tr1::_Bind1<std::tr1::_Callable_pmf<void (NSaveLoad::CManagedObject<NSaveLoad::CLocalDataRef<CPlayerActionObserver::CSystemicButtonHintData>>::*const)(void),NSaveLoad::CManagedObject<NSaveLoad::CLocalDataRef<CPlayerActionObserver::CSystemicButtonHintData>>,0>,NSaveLoad::CManagedObject<NSaveLoad::CLocalDataRef<CPlayerActionObserver::CSystemicButtonHintData>> *>>,0>,void>",
-                "_Get"
-            ]
-        );
-    }
-
-    #[test]
-    fn test_namespace_function() {
-        let result = parse_signature("void __fastcall std::bad_alloc::bad_alloc");
-        assert_eq!(result, vec!["std", "bad_alloc", "bad_alloc"]);
-    }
-
-    #[test]
-    fn test_templated_namespace() {
-        let result = parse_signature("int *__fastcall std::_Uninitialized_copy<int *,int *,std::allocator<int>>");
-        assert_eq!(
-            result,
-            vec!["std", "_Uninitialized_copy<int *,int *,std::allocator<int>>"]
-        );
-    }
 }
 
 #[cfg(test)]

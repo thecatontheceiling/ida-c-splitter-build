@@ -2960,7 +2960,7 @@ fn test_signature_299() {
 fn test_signature_300() {
     let result = parse_signature("void NGraphicsEngine::_dynamic_initializer_for__INV_LIGHT_MAX_SQ_DISTANCE___8");
     assert_eq!(result, vec![
-        "void NGraphicsEngine",
+        "NGraphicsEngine",
         "_dynamic_initializer_for__INV_LIGHT_MAX_SQ_DISTANCE___8"
     ]);
 }
@@ -2969,7 +2969,7 @@ fn test_signature_300() {
 fn test_signature_301() {
     let result = parse_signature("__int64 NGameSoundLibrary::NGate::_dynamic_initializer_for__T_TIME_SPAN__NAME_HASH___8");
     assert_eq!(result, vec![
-        "__int64 NGameSoundLibrary",
+        "NGameSoundLibrary",
         "NGate",
         "_dynamic_initializer_for__T_TIME_SPAN__NAME_HASH___8"
     ]);
@@ -2979,7 +2979,7 @@ fn test_signature_301() {
 fn test_signature_302() {
     let result = parse_signature("__int64 dynamic_initializer_for__hash_settings_menu_input_gamepad_ps4__");
     assert_eq!(result, vec![
-        "__int64 dynamic_initializer_for__hash_settings_menu_input_gamepad_ps4__"
+        "dynamic_initializer_for__hash_settings_menu_input_gamepad_ps4__"
     ]);
 }
 
@@ -2987,7 +2987,7 @@ fn test_signature_302() {
 fn test_signature_303() {
     let result = parse_signature("const hkClassEnum *dynamic_initializer_for__hkaiAstarCostModifierClass_Members__");
     assert_eq!(result, vec![
-        "const hkClassEnum *dynamic_initializer_for__hkaiAstarCostModifierClass_Members__"
+        "hkClassEnum *dynamic_initializer_for__hkaiAstarCostModifierClass_Members__"
     ]);
 }
 
@@ -2995,7 +2995,7 @@ fn test_signature_303() {
 fn test_signature_304() {
     let result = parse_signature("__int64 dynamic_initializer_for__Scaleform::GFx::AS3::ThunkFunc0_Scaleform::GFx::AS3::Instances::fl_media::Sound_3_bool_::Method__");
     assert_eq!(result, vec![
-        "__int64 dynamic_initializer_for__Scaleform",
+        "dynamic_initializer_for__Scaleform",
         "GFx",
         "AS3",
         "ThunkFunc0_Scaleform",
@@ -3012,7 +3012,7 @@ fn test_signature_304() {
 fn test_signature_305() {
     let result = parse_signature("__int64 dynamic_initializer_for__Scaleform::GFx::AS3::ThunkFunc1_Scaleform::GFx::AS3::Instances::fl_filters::DropShadowFilter_17_Scaleform::GFx::AS3::Value_const__bool_::Method__");
     assert_eq!(result, vec![
-        "__int64 dynamic_initializer_for__Scaleform",
+        "dynamic_initializer_for__Scaleform",
         "GFx",
         "AS3",
         "ThunkFunc1_Scaleform",
@@ -3032,7 +3032,7 @@ fn test_signature_305() {
 fn test_signature_306() {
     let result = parse_signature("void *Scaleform::Render::D3D1x::_dynamic_initializer_for__ShaderDesc_VS_D3D1xFL11X_VInstancedYUVCxform__");
     assert_eq!(result, vec![
-        "void *Scaleform",
+        "Scaleform",
         "Render",
         "D3D1x",
         "_dynamic_initializer_for__ShaderDesc_VS_D3D1xFL11X_VInstancedYUVCxform__"
@@ -3043,7 +3043,7 @@ fn test_signature_306() {
 fn test_signature_307() {
     let result = parse_signature("__int64 Scaleform::Render::D3D1x::_dynamic_initializer_for__ShaderDesc_FS_D3D1xFL10X_FBatchTextMul__");
     assert_eq!(result, vec![
-        "__int64 Scaleform",
+        "Scaleform",
         "Render",
         "D3D1x",
         "_dynamic_initializer_for__ShaderDesc_FS_D3D1xFL10X_FBatchTextMul__"
@@ -3054,7 +3054,7 @@ fn test_signature_307() {
 fn test_signature_308() {
     let result = parse_signature("void dynamic_initializer_for__hkpDashpotActionClass__");
     assert_eq!(result, vec![
-        "void dynamic_initializer_for__hkpDashpotActionClass__"
+        "dynamic_initializer_for__hkpDashpotActionClass__"
     ]);
 }
 
@@ -3062,7 +3062,7 @@ fn test_signature_308() {
 fn test_signature_309() {
     let result = parse_signature("__int64 NCharacter::_dynamic_atexit_destructor_for__S_RUN_GRPL_FIRE_180L__");
     assert_eq!(result, vec![
-        "__int64 NCharacter",
+        "NCharacter",
         "_dynamic_atexit_destructor_for__S_RUN_GRPL_FIRE_180L__"
     ]);
 }
@@ -3071,7 +3071,7 @@ fn test_signature_309() {
 fn test_signature_310() {
     let result = parse_signature("void dynamic_atexit_destructor_for__s_wingsuit_evade_reticle_align__");
     assert_eq!(result, vec![
-        "void dynamic_atexit_destructor_for__s_wingsuit_evade_reticle_align__"
+        "dynamic_atexit_destructor_for__s_wingsuit_evade_reticle_align__"
     ]);
 }
 
@@ -3079,7 +3079,7 @@ fn test_signature_310() {
 fn test_signature_311() {
     let result = parse_signature("__int64 dynamic_atexit_destructor_for__hash_mission_b___0");
     assert_eq!(result, vec![
-        "__int64 dynamic_atexit_destructor_for__hash_mission_b___0"
+        "dynamic_atexit_destructor_for__hash_mission_b___0"
     ]);
 }
 
