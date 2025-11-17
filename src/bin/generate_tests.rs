@@ -20,10 +20,12 @@ fn main() {
         let expected = parse_signature(trimmed);
 
         // Generate the test case
-        output.push_str(&format!("#[test]\n"));
+        output.push_str("#[test]\n");
         output.push_str(&format!("fn test_signature_{:03}() {{\n", test_number));
-        output.push_str(&format!("    let result = parse_signature(\"{}\");\n",
-            trimmed.replace("\\", "\\\\").replace("\"", "\\\"")));
+        output.push_str(&format!(
+            "    let result = parse_signature(\"{}\");\n",
+            trimmed.replace("\\", "\\\\").replace("\"", "\\\"")
+        ));
         output.push_str("    assert_eq!(result, vec![\n");
 
         for (i, part) in expected.iter().enumerate() {
@@ -43,10 +45,13 @@ fn main() {
 
     // Write the output file
     let output_path = "/home/user/ida-c-splitter/src/signature_parser_generated_tests.rs";
-    let mut file = fs::File::create(output_path)
-        .expect("Failed to create output file");
+    let mut file = fs::File::create(output_path).expect("Failed to create output file");
     file.write_all(output.as_bytes())
         .expect("Failed to write to output file");
 
-    println!("Generated {} test cases in {}", test_number - 1, output_path);
+    println!(
+        "Generated {} test cases in {}",
+        test_number - 1,
+        output_path
+    );
 }

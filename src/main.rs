@@ -41,8 +41,7 @@ fn main() {
         let remaining_file = unsafe { std::str::from_utf8_unchecked(&mmap[offset..]) };
         let signature = remaining_file
             .lines()
-            .skip_while(|line| line.starts_with("//"))
-            .next()
+            .find(|line| !line.starts_with("//"))
             .expect("Failed to find signature");
         let signature = &signature[..signature
             .rfind("(")
@@ -57,9 +56,9 @@ fn main() {
     println!("Function definitions: {}", function_definitions.len());
 
     let intermediate = Intermediate {
-        function_declarations: function_declarations,
-        data_declarations: data_declarations,
-        function_definitions: function_definitions,
+        function_declarations,
+        data_declarations,
+        function_definitions,
     };
 
     let json =

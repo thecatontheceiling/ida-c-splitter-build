@@ -47,7 +47,10 @@ fn skip_return_type(signature: &str) -> &str {
         if let Some(space_pos) = before_scope.rfind(' ') {
             // Skip any pointer/reference markers after the space
             let after_space = &signature[space_pos..].trim_start();
-            return after_space.trim_start_matches('*').trim_start_matches('&').trim_start();
+            return after_space
+                .trim_start_matches('*')
+                .trim_start_matches('&')
+                .trim_start();
         }
     }
 
@@ -55,7 +58,10 @@ fn skip_return_type(signature: &str) -> &str {
     // Find the first space and return everything after it
     if let Some(space_pos) = signature.find(' ') {
         let after_space = &signature[space_pos..].trim_start();
-        return after_space.trim_start_matches('*').trim_start_matches('&').trim_start();
+        return after_space
+            .trim_start_matches('*')
+            .trim_start_matches('&')
+            .trim_start();
     }
 
     // No space found, return the whole thing (shouldn't happen in practice)
