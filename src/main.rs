@@ -152,12 +152,7 @@ fn create_file_tree(functions: &[IntermediateFunction], mmap: &[u8]) {
             let current_func = &functions[idx];
 
             // Find the next function's offset in the overall list (functions are sorted by offset)
-            let end_offset = functions
-                .iter()
-                .skip(idx + 1)
-                .map(|f| f.offset)
-                .next()
-                .unwrap_or(mmap.len());
+            let end_offset = functions.get(idx + 1).map(|f| f.offset).unwrap_or(mmap.len());
 
             // Extract function body
             let body = &mmap[current_func.offset..end_offset];
