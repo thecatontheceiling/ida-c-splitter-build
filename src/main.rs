@@ -73,7 +73,7 @@ fn main() {
     std::fs::write("intermediate.json", json).expect("Failed to write intermediate.json");
 
     // Create file tree hierarchy
-    create_file_tree(&intermediate.function_definitions, &mmap);
+    create_file_tree(&intermediate.function_definitions, &mmap, "output");
 }
 
 /// Sanitizes a filename for Windows compatibility
@@ -111,16 +111,16 @@ fn sanitize_filename(name: &str) -> String {
 }
 
 /// Creates the file tree hierarchy from function definitions
-fn create_file_tree(functions: &[IntermediateFunction], mmap: &[u8]) {
+fn create_file_tree(functions: &[IntermediateFunction], mmap: &[u8], output_dir: &str) {
     // Group functions by their target file path
     let mut file_groups: HashMap<PathBuf, Vec<usize>> = HashMap::new();
 
     for (idx, func) in functions.iter().enumerate() {
         let path = if func.segments.len() < 2 {
             // Functions with < 2 segments go into global.cpp
-            PathBuf::from("output/global.cpp")
+            PathBuf::from(output_dir).join("global.cpp")
         } else {
-            let mut path = PathBuf::from("output");
+            let mut path = PathBuf::from(output_dir);
 
             // Everything up to n-2 segments become folders (all but the last two)
             if func.segments.len() > 2 {
@@ -142,7 +142,7 @@ fn create_file_tree(functions: &[IntermediateFunction], mmap: &[u8]) {
     }
 
     // Create output directory
-    std::fs::create_dir_all("output").expect("Failed to create output directory");
+    std::fs::create_dir_all(output_dir).expect("Failed to create output directory");
 
     // Write each file
     for (path, indices) in file_groups {
@@ -178,5 +178,5 @@ fn create_file_tree(functions: &[IntermediateFunction], mmap: &[u8]) {
             .unwrap_or_else(|e| panic!("Failed to write file {:?}: {}", path, e));
     }
 
-    println!("File tree created in output/ directory");
+    println!("File tree created in {} directory", output_dir);
 }
