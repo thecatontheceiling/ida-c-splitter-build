@@ -110,6 +110,32 @@ fn sanitize_filename(name: &str) -> String {
     sanitized
 }
 
+/// Converts a path to use Windows long path syntax (\\?\) for paths exceeding MAX_PATH
+#[cfg(windows)]
+fn enable_long_paths(path: &std::path::Path) -> PathBuf {
+    // Convert to absolute path if not already
+    let absolute = if path.is_absolute() {
+        path.to_path_buf()
+    } else {
+        std::env::current_dir()
+            .expect("Failed to get current directory")
+            .join(path)
+    };
+
+    // Add \\?\ prefix for long path support on Windows
+    let path_str = absolute.to_string_lossy();
+    if !path_str.starts_with(r"\\?\") {
+        PathBuf::from(format!(r"\\?\{}", path_str))
+    } else {
+        absolute
+    }
+}
+
+#[cfg(not(windows))]
+fn enable_long_paths(path: &std::path::Path) -> PathBuf {
+    path.to_path_buf()
+}
+
 /// Creates the file tree hierarchy from function definitions
 fn create_file_tree(functions: &[IntermediateFunction], mmap: &[u8], output_dir: &str) {
     // Group functions by their target file path
@@ -142,13 +168,16 @@ fn create_file_tree(functions: &[IntermediateFunction], mmap: &[u8], output_dir:
     }
 
     // Create output directory
-    std::fs::create_dir_all(output_dir).expect("Failed to create output directory");
+    let output_path = PathBuf::from(output_dir);
+    let output_path_long = enable_long_paths(&output_path);
+    std::fs::create_dir_all(&output_path_long).expect("Failed to create output directory");
 
     // Write each file
     for (path, indices) in file_groups {
         // Create parent directories
         if let Some(parent) = path.parent() {
-            std::fs::create_dir_all(parent).expect("Failed to create directory structure");
+            let parent_long = enable_long_paths(parent);
+            std::fs::create_dir_all(&parent_long).expect("Failed to create directory structure");
         }
 
         // Collect all function bodies for this file
@@ -174,7 +203,8 @@ fn create_file_tree(functions: &[IntermediateFunction], mmap: &[u8], output_dir:
         }
 
         // Write the file
-        std::fs::write(&path, file_content)
+        let path_long = enable_long_paths(&path);
+        std::fs::write(&path_long, file_content)
             .unwrap_or_else(|e| panic!("Failed to write file {:?}: {}", path, e));
     }
 
