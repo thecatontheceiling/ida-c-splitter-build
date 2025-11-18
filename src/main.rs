@@ -10,7 +10,6 @@ mod signature_parser;
 #[command(version, about, long_about = None)]
 struct Args {
     /// Path to the IDA C export file
-    #[arg(short, long)]
     input: PathBuf,
 
     /// Output directory for the split files
@@ -53,27 +52,38 @@ fn main() {
             + function_declarations;
     tracing::debug!("Found data declarations at offset: {}", data_declarations);
 
-    // Parse function definitions
-    let functions: Vec<Function> = memchr::memmem::find_iter(&mmap[data_declarations..], b"//----- (")
-        .map(|offset_from_dd| {
-            let offset = offset_from_dd + data_declarations;
+    // Collect offsets and signatures first
+    let raw_functions: Vec<(usize, String)> =
+        memchr::memmem::find_iter(&mmap[data_declarations..], b"//----- (")
+            .map(|offset_from_dd| {
+                let offset = offset_from_dd + data_declarations;
 
-            let remaining_file = unsafe { std::str::from_utf8_unchecked(&mmap[offset..]) };
-            let signature = remaining_file
-                .lines()
-                .find(|line| !line.starts_with("//"))
-                .expect("Failed to find signature");
-            let signature = &signature[..signature
-                .rfind('(')
-                .expect("Failed to find opening parenthesis")];
+                let remaining_file = unsafe { std::str::from_utf8_unchecked(&mmap[offset..]) };
+                let signature = remaining_file
+                    .lines()
+                    .find(|line| !line.starts_with("//"))
+                    .expect("Failed to find signature");
+                let signature = &signature[..signature
+                    .rfind('(')
+                    .expect("Failed to find opening parenthesis")];
 
+                (offset, signature.to_string())
+            })
+            .collect();
+
+    tracing::info!("Found {} function definitions", raw_functions.len());
+
+    // Parse segments in parallel
+    let functions: Vec<Function> = raw_functions
+        .par_iter()
+        .map(|(offset, signature)| {
             let segments = signature_parser::parse_signature(signature);
-
-            Function { offset, segments }
+            Function {
+                offset: *offset,
+                segments,
+            }
         })
         .collect();
-
-    tracing::info!("Found {} function definitions", functions.len());
 
     // Create output directory
     std::fs::create_dir_all(&args.output).expect("Failed to create output directory");
