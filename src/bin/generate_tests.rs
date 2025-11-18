@@ -3,8 +3,8 @@ use std::fs;
 use std::io::Write;
 
 fn main() {
-    let signatures = fs::read_to_string("/home/user/ida-c-splitter/signatures_sample.txt")
-        .expect("Failed to read signatures_sample.txt");
+    let signatures =
+        fs::read_to_string("signatures_sample.txt").expect("Failed to read signatures_sample.txt");
 
     let mut output = String::new();
     output.push_str("use crate::signature_parser::parse_signature;\n\n");
@@ -44,7 +44,7 @@ fn main() {
     }
 
     // Write the output file
-    let output_path = "/home/user/ida-c-splitter/src/signature_parser_generated_tests.rs";
+    let output_path = "src/signature_parser_generated_tests.rs";
     let mut file = fs::File::create(output_path).expect("Failed to create output file");
     file.write_all(output.as_bytes())
         .expect("Failed to write to output file");
