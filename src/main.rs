@@ -123,9 +123,12 @@ fn enable_long_paths(path: &std::path::Path) -> PathBuf {
     };
 
     // Add \\?\ prefix for long path support on Windows
+    // IMPORTANT: Verbatim paths do not normalize forward slashes, so we must ensure backslashes
     let path_str = absolute.to_string_lossy();
     if !path_str.starts_with(r"\\?\") {
-        PathBuf::from(format!(r"\\?\{}", path_str))
+        // Replace forward slashes with backslashes for verbatim path compatibility
+        let normalized = path_str.replace('/', r"\");
+        PathBuf::from(format!(r"\\?\{}", normalized))
     } else {
         absolute
     }
