@@ -1,88 +1,105 @@
-use serde::Serialize;
+use clap::Parser;
+use rayon::prelude::*;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
 mod signature_parser;
 
-#[derive(Debug, Serialize)]
-struct Intermediate {
-    function_declarations: usize,
-    data_declarations: usize,
-    function_definitions: Vec<IntermediateFunction>,
+/// Split IDA Hex-Rays decompiler C exports into a navigable file tree
+#[derive(Parser, Debug)]
+#[command(version, about, long_about = None)]
+struct Args {
+    /// Path to the IDA C export file
+    input: PathBuf,
+
+    /// Output directory for the split files
+    #[arg(short, long, default_value = "output")]
+    output: PathBuf,
 }
 
-#[derive(Debug, Serialize, Clone)]
-struct IntermediateFunction {
-    pub offset: usize,
-    pub address: usize,
-    pub signature: String,
-    pub segments: Vec<String>,
+#[derive(Debug, Clone)]
+struct Function {
+    offset: usize,
+    segments: Vec<String>,
 }
 
 fn main() {
-    let file_path = std::env::args().nth(1).expect("No file path provided");
+    // Initialize tracing
+    tracing_subscriber::fmt()
+        .with_env_filter(
+            tracing_subscriber::EnvFilter::try_from_default_env()
+                .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new("info")),
+        )
+        .init();
 
-    let file = std::fs::File::open(file_path).expect("Failed to open file");
+    let args = Args::parse();
+
+    tracing::info!("Opening file: {}", args.input.display());
+    let file = std::fs::File::open(&args.input).expect("Failed to open file");
     let mmap = unsafe { memmap2::Mmap::map(&file).expect("Failed to mmap file") };
 
+    // Find section markers
     let function_declarations = memchr::memmem::find(&mmap, b"// Function declarations")
         .expect("Failed to find function declarations");
-    println!("Function declarations: {function_declarations}");
+    tracing::debug!(
+        "Found function declarations at offset: {}",
+        function_declarations
+    );
+
     let data_declarations =
         memchr::memmem::find(&mmap[function_declarations..], b"// Data declarations")
             .expect("Failed to find data declarations")
             + function_declarations;
-    println!("Data declarations: {data_declarations}");
-    let mut function_definitions: Vec<IntermediateFunction> = vec![];
+    tracing::debug!("Found data declarations at offset: {}", data_declarations);
 
-    for offset_from_dd in memchr::memmem::find_iter(&mmap[data_declarations..], b"//----- (") {
-        let offset = offset_from_dd + data_declarations;
-        let address_start = offset + "//----- (".len();
-        let address_length = "0000000140AFDCB0".len();
-        let address_slice = &mmap[address_start..address_start + address_length];
-        let address_str = unsafe { std::str::from_utf8_unchecked(address_slice) };
-        let address = usize::from_str_radix(address_str, 16).expect("Failed to parse address");
+    // Collect offsets and signatures first
+    let raw_functions: Vec<(usize, String)> =
+        memchr::memmem::find_iter(&mmap[data_declarations..], b"//----- (")
+            .map(|offset_from_dd| {
+                let offset = offset_from_dd + data_declarations;
 
-        let remaining_file = unsafe { std::str::from_utf8_unchecked(&mmap[offset..]) };
-        let signature = remaining_file
-            .lines()
-            .find(|line| !line.starts_with("//"))
-            .expect("Failed to find signature");
-        let signature = &signature[..signature
-            .rfind("(")
-            .expect("Failed to find opening parenthesis")];
+                let remaining_file = unsafe { std::str::from_utf8_unchecked(&mmap[offset..]) };
+                let signature = remaining_file
+                    .lines()
+                    .find(|line| !line.starts_with("//"))
+                    .expect("Failed to find signature");
+                let signature = &signature[..signature
+                    .rfind('(')
+                    .expect("Failed to find opening parenthesis")];
 
-        let segments = signature_parser::parse_signature(signature);
-        function_definitions.push(IntermediateFunction {
-            offset,
-            address,
-            signature: signature.to_string(),
-            segments,
-        });
-    }
-    println!("Function definitions: {}", function_definitions.len());
+                (offset, signature.to_string())
+            })
+            .collect();
 
-    let intermediate = Intermediate {
-        function_declarations,
-        data_declarations,
-        function_definitions,
-    };
+    tracing::info!("Found {} function definitions", raw_functions.len());
 
-    let json =
-        serde_json::to_string_pretty(&intermediate).expect("Failed to serialize intermediate");
+    // Parse segments in parallel
+    let functions: Vec<Function> = raw_functions
+        .par_iter()
+        .map(|(offset, signature)| {
+            let segments = signature_parser::parse_signature(signature);
+            Function {
+                offset: *offset,
+                segments,
+            }
+        })
+        .collect();
 
-    let output_dir = Path::new("output");
-    std::fs::create_dir_all(output_dir).expect("Failed to create output directory");
-    std::fs::write(output_dir.join("intermediate.json"), json)
-        .expect("Failed to write intermediate.json");
+    // Create output directory
+    std::fs::create_dir_all(&args.output).expect("Failed to create output directory");
 
-    // Create file tree hierarchy
+    // Write data declarations
+    tracing::info!("Writing data declarations");
     std::fs::write(
-        output_dir.join("__data_declarations.cpp"),
-        &mmap[data_declarations..intermediate.function_definitions[0].offset],
+        args.output.join("__data_declarations.cpp"),
+        &mmap[data_declarations..functions[0].offset],
     )
     .expect("Failed to write __data_declarations.cpp");
-    create_file_tree(&intermediate.function_definitions, &mmap, output_dir);
+
+    // Create file tree hierarchy
+    create_file_tree(&functions, &mmap, &args.output);
+
+    tracing::info!("File tree created in {} directory", args.output.display());
 }
 
 /// Sanitizes a filename for Windows compatibility
@@ -129,7 +146,7 @@ fn strip_template_params(segment: &str) -> &str {
 }
 
 /// Creates the file tree hierarchy from function definitions
-fn create_file_tree(functions: &[IntermediateFunction], mmap: &[u8], output_dir: &Path) {
+fn create_file_tree(functions: &[Function], mmap: &[u8], output_dir: &Path) {
     // Group functions by their target file path
     let mut file_groups: HashMap<PathBuf, Vec<usize>> = HashMap::new();
 
@@ -159,11 +176,10 @@ fn create_file_tree(functions: &[IntermediateFunction], mmap: &[u8], output_dir:
         file_groups.entry(path).or_default().push(idx);
     }
 
-    // Create output directory
-    std::fs::create_dir_all(output_dir).expect("Failed to create output directory");
+    tracing::info!("Writing {} files", file_groups.len());
 
-    // Write each file
-    for (path, indices) in file_groups {
+    // Write each file in parallel using rayon
+    file_groups.par_iter().for_each(|(path, indices)| {
         // Create parent directories
         if let Some(parent) = path.parent() {
             std::fs::create_dir_all(parent).expect("Failed to create directory structure");
@@ -187,9 +203,9 @@ fn create_file_tree(functions: &[IntermediateFunction], mmap: &[u8], output_dir:
         }
 
         // Write the file
-        std::fs::write(&path, file_content)
+        std::fs::write(path, file_content)
             .unwrap_or_else(|e| panic!("Failed to write file {:?}: {}", path, e));
-    }
 
-    println!("File tree created in {} directory", output_dir.display());
+        tracing::debug!("Wrote file: {}", path.display());
+    });
 }
