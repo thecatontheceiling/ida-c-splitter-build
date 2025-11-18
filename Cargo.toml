@@ -5,7 +5,13 @@ edition = "2024"
 default-run = "ida-c-splitter"
 
 [dependencies]
+clap = { version = "4.5", features = ["derive"] }
 memchr = "2.7.6"
 memmap2 = "0.9.9"
-serde = { version = "1.0.228", features = ["derive"] }
-serde_json = "1.0.145"
+rayon = "1.10"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+[[bin]]
+name = "generate_tests"
+path = "src/bin/generate_tests.rs"
