@@ -1,7 +1,7 @@
+use ida_c_splitter::signature_parser::parse_signature;
 use serde::Serialize;
 use std::collections::HashMap;
 use std::path::PathBuf;
-use ida_c_splitter::signature_parser::parse_signature;
 
 #[derive(Debug, Serialize)]
 struct Intermediate {
@@ -88,9 +88,8 @@ fn sanitize_filename(name: &str) -> String {
 
     // Handle reserved Windows names
     let reserved_names = [
-        "CON", "PRN", "AUX", "NUL", "COM1", "COM2", "COM3", "COM4", "COM5",
-        "COM6", "COM7", "COM8", "COM9", "LPT1", "LPT2", "LPT3", "LPT4",
-        "LPT5", "LPT6", "LPT7", "LPT8", "LPT9",
+        "CON", "PRN", "AUX", "NUL", "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8",
+        "COM9", "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9",
     ];
 
     if reserved_names.contains(&sanitized.to_uppercase().as_str()) {
@@ -98,7 +97,10 @@ fn sanitize_filename(name: &str) -> String {
     }
 
     // Remove trailing dots and spaces (not allowed on Windows)
-    sanitized = sanitized.trim_end_matches('.').trim_end_matches(' ').to_string();
+    sanitized = sanitized
+        .trim_end_matches('.')
+        .trim_end_matches(' ')
+        .to_string();
 
     // Ensure not empty
     if sanitized.is_empty() {
@@ -129,7 +131,10 @@ fn create_file_tree(functions: &[IntermediateFunction], mmap: &[u8]) {
         }
 
         // n-1 segment becomes the .cpp filename (second to last)
-        let filename = format!("{}.cpp", sanitize_filename(&func.segments[func.segments.len() - 2]));
+        let filename = format!(
+            "{}.cpp",
+            sanitize_filename(&func.segments[func.segments.len() - 2])
+        );
         path.push(filename);
 
         file_groups.entry(path).or_default().push(idx);
@@ -152,7 +157,10 @@ fn create_file_tree(functions: &[IntermediateFunction], mmap: &[u8]) {
             let current_func = &functions[idx];
 
             // Find the next function's offset in the overall list (functions are sorted by offset)
-            let end_offset = functions.get(idx + 1).map(|f| f.offset).unwrap_or(mmap.len());
+            let end_offset = functions
+                .get(idx + 1)
+                .map(|f| f.offset)
+                .unwrap_or(mmap.len());
 
             // Extract function body
             let body = &mmap[current_func.offset..end_offset];
