@@ -164,7 +164,7 @@ fn create_file_tree(functions: &[IntermediateFunction], mmap: &[u8], output_dir:
         // Collect all function bodies for this file
         let mut file_content = Vec::new();
 
-        for (i, &idx) in indices.iter().enumerate() {
+        for &idx in indices.iter() {
             let current_func = &functions[idx];
 
             // Find the next function's offset in the overall list (functions are sorted by offset)
@@ -176,11 +176,6 @@ fn create_file_tree(functions: &[IntermediateFunction], mmap: &[u8], output_dir:
             // Extract function body
             let body = &mmap[current_func.offset..end_offset];
             file_content.extend_from_slice(body);
-
-            // Add newline between functions in the same file (but not after the last one)
-            if i + 1 < indices.len() {
-                file_content.push(b'\n');
-            }
         }
 
         // Write the file
