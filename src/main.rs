@@ -1,6 +1,6 @@
 use serde::Serialize;
 use std::collections::HashMap;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 mod signature_parser;
 
@@ -70,10 +70,19 @@ fn main() {
 
     let json =
         serde_json::to_string_pretty(&intermediate).expect("Failed to serialize intermediate");
-    std::fs::write("intermediate.json", json).expect("Failed to write intermediate.json");
+
+    let output_dir = Path::new("output");
+    std::fs::create_dir_all(output_dir).expect("Failed to create output directory");
+    std::fs::write(output_dir.join("intermediate.json"), json)
+        .expect("Failed to write intermediate.json");
 
     // Create file tree hierarchy
-    create_file_tree(&intermediate.function_definitions, &mmap, "output");
+    std::fs::write(
+        output_dir.join("__data_declarations.cpp"),
+        &mmap[data_declarations..intermediate.function_definitions[0].offset],
+    )
+    .expect("Failed to write __data_declarations.cpp");
+    create_file_tree(&intermediate.function_definitions, &mmap, output_dir);
 }
 
 /// Sanitizes a filename for Windows compatibility
@@ -120,17 +129,16 @@ fn strip_template_params(segment: &str) -> &str {
 }
 
 /// Creates the file tree hierarchy from function definitions
-fn create_file_tree(functions: &[IntermediateFunction], mmap: &[u8], output_dir: &str) {
+fn create_file_tree(functions: &[IntermediateFunction], mmap: &[u8], output_dir: &Path) {
     // Group functions by their target file path
     let mut file_groups: HashMap<PathBuf, Vec<usize>> = HashMap::new();
 
     for (idx, func) in functions.iter().enumerate() {
         let path = if func.segments.len() < 2 {
             // Functions with < 2 segments go into global.cpp
-            PathBuf::from(output_dir).join("global.cpp")
+            output_dir.join("global.cpp")
         } else {
-            let mut path = PathBuf::from(output_dir);
-
+            let mut path = output_dir.to_path_buf();
             // Everything up to n-2 segments become folders (all but the last two)
             // Strip template parameters to group template instantiations together
             if func.segments.len() > 2 {
@@ -183,5 +191,5 @@ fn create_file_tree(functions: &[IntermediateFunction], mmap: &[u8], output_dir:
             .unwrap_or_else(|e| panic!("Failed to write file {:?}: {}", path, e));
     }
 
-    println!("File tree created in {} directory", output_dir);
+    println!("File tree created in {} directory", output_dir.display());
 }
