@@ -2,6 +2,7 @@
 name = "ida-c-splitter"
 version = "0.1.0"
 edition = "2024"
+default-run = "ida-c-splitter"
 
 [dependencies]
 memchr = "2.7.6"
