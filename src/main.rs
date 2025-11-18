@@ -116,26 +116,27 @@ fn create_file_tree(functions: &[IntermediateFunction], mmap: &[u8]) {
     let mut file_groups: HashMap<PathBuf, Vec<usize>> = HashMap::new();
 
     for (idx, func) in functions.iter().enumerate() {
-        if func.segments.len() < 2 {
-            // Skip functions with insufficient segments
-            continue;
-        }
+        let path = if func.segments.len() < 2 {
+            // Functions with < 2 segments go into global.cpp
+            PathBuf::from("output/global.cpp")
+        } else {
+            let mut path = PathBuf::from("output");
 
-        let mut path = PathBuf::from("output");
-
-        // Everything up to n-2 segments become folders (all but the last two)
-        if func.segments.len() > 2 {
-            for segment in &func.segments[..func.segments.len() - 2] {
-                path.push(sanitize_filename(segment));
+            // Everything up to n-2 segments become folders (all but the last two)
+            if func.segments.len() > 2 {
+                for segment in &func.segments[..func.segments.len() - 2] {
+                    path.push(sanitize_filename(segment));
+                }
             }
-        }
 
-        // n-1 segment becomes the .cpp filename (second to last)
-        let filename = format!(
-            "{}.cpp",
-            sanitize_filename(&func.segments[func.segments.len() - 2])
-        );
-        path.push(filename);
+            // n-1 segment becomes the .cpp filename (second to last)
+            let filename = format!(
+                "{}.cpp",
+                sanitize_filename(&func.segments[func.segments.len() - 2])
+            );
+            path.push(filename);
+            path
+        };
 
         file_groups.entry(path).or_default().push(idx);
     }
