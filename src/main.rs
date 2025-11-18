@@ -1,7 +1,8 @@
-use ida_c_splitter::signature_parser::parse_signature;
 use serde::Serialize;
 use std::collections::HashMap;
 use std::path::PathBuf;
+
+mod signature_parser;
 
 #[derive(Debug, Serialize)]
 struct Intermediate {
@@ -51,8 +52,7 @@ fn main() {
             .rfind("(")
             .expect("Failed to find opening parenthesis")];
 
-        let segments = parse_signature(signature);
-
+        let segments = signature_parser::parse_signature(signature);
         function_definitions.push(IntermediateFunction {
             offset,
             address,
