@@ -110,33 +110,13 @@ fn sanitize_filename(name: &str) -> String {
     sanitized
 }
 
-/// Converts a path to use Windows long path syntax (\\?\) for paths exceeding MAX_PATH
-#[cfg(windows)]
-fn enable_long_paths(path: &std::path::Path) -> PathBuf {
-    // Convert to absolute path if not already
-    let absolute = if path.is_absolute() {
-        path.to_path_buf()
-    } else {
-        std::env::current_dir()
-            .expect("Failed to get current directory")
-            .join(path)
-    };
-
-    // Add \\?\ prefix for long path support on Windows
-    // IMPORTANT: Verbatim paths do not normalize forward slashes, so we must ensure backslashes
-    let path_str = absolute.to_string_lossy();
-    if !path_str.starts_with(r"\\?\") {
-        // Replace forward slashes with backslashes for verbatim path compatibility
-        let normalized = path_str.replace('/', r"\");
-        PathBuf::from(format!(r"\\?\{}", normalized))
-    } else {
-        absolute
-    }
-}
-
-#[cfg(not(windows))]
-fn enable_long_paths(path: &std::path::Path) -> PathBuf {
-    path.to_path_buf()
+/// Strips template parameters from a segment name
+/// e.g., "unique_ptr<CResourceLoader>" -> "unique_ptr"
+fn strip_template_params(segment: &str) -> &str {
+    segment
+        .find('<')
+        .map(|pos| &segment[..pos])
+        .unwrap_or(segment)
 }
 
 /// Creates the file tree hierarchy from function definitions
@@ -152,17 +132,18 @@ fn create_file_tree(functions: &[IntermediateFunction], mmap: &[u8], output_dir:
             let mut path = PathBuf::from(output_dir);
 
             // Everything up to n-2 segments become folders (all but the last two)
+            // Strip template parameters to group template instantiations together
             if func.segments.len() > 2 {
                 for segment in &func.segments[..func.segments.len() - 2] {
-                    path.push(sanitize_filename(segment));
+                    let stripped = strip_template_params(segment);
+                    path.push(sanitize_filename(stripped));
                 }
             }
 
             // n-1 segment becomes the .cpp filename (second to last)
-            let filename = format!(
-                "{}.cpp",
-                sanitize_filename(&func.segments[func.segments.len() - 2])
-            );
+            // Strip template parameters so all instantiations go into the same file
+            let stripped = strip_template_params(&func.segments[func.segments.len() - 2]);
+            let filename = format!("{}.cpp", sanitize_filename(stripped));
             path.push(filename);
             path
         };
@@ -171,16 +152,13 @@ fn create_file_tree(functions: &[IntermediateFunction], mmap: &[u8], output_dir:
     }
 
     // Create output directory
-    let output_path = PathBuf::from(output_dir);
-    let output_path_long = enable_long_paths(&output_path);
-    std::fs::create_dir_all(&output_path_long).expect("Failed to create output directory");
+    std::fs::create_dir_all(output_dir).expect("Failed to create output directory");
 
     // Write each file
     for (path, indices) in file_groups {
         // Create parent directories
         if let Some(parent) = path.parent() {
-            let parent_long = enable_long_paths(parent);
-            std::fs::create_dir_all(&parent_long).expect("Failed to create directory structure");
+            std::fs::create_dir_all(parent).expect("Failed to create directory structure");
         }
 
         // Collect all function bodies for this file
@@ -206,8 +184,7 @@ fn create_file_tree(functions: &[IntermediateFunction], mmap: &[u8], output_dir:
         }
 
         // Write the file
-        let path_long = enable_long_paths(&path);
-        std::fs::write(&path_long, file_content)
+        std::fs::write(&path, file_content)
             .unwrap_or_else(|e| panic!("Failed to write file {:?}: {}", path, e));
     }
 
