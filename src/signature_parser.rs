@@ -21,14 +21,32 @@ pub fn parse_signature(signature: &str) -> Vec<String> {
         "__vectorcall",
     ];
 
+    // For function pointer return types, there may be multiple calling conventions
+    // (one in the return type, one for the function itself). We want the LAST one.
     let function_path = calling_conventions
         .iter()
-        .filter_map(|&conv| {
-            signature
-                .find(conv)
-                .map(|pos| signature[pos + conv.len()..].trim_start())
+        .flat_map(|&conv| {
+            // Find all occurrences of this calling convention
+            let mut positions = Vec::new();
+            let mut start = 0;
+            while let Some(pos) = signature[start..].find(conv) {
+                positions.push(start + pos);
+                start = start + pos + conv.len();
+            }
+            positions.into_iter().map(move |pos| (pos, conv))
         })
-        .next()
+        .max_by_key(|(pos, _)| *pos)
+        .map(|(pos, conv)| {
+            let mut path = signature[pos + conv.len()..].trim_start();
+            // Skip function attributes that may appear after calling convention
+            let attributes = ["__noreturn"];
+            for &attr in &attributes {
+                if path.starts_with(attr) {
+                    path = path[attr.len()..].trim_start();
+                }
+            }
+            path
+        })
         .unwrap_or_else(|| skip_return_type(signature.trim()));
 
     // Split by :: while respecting template bracket depth
