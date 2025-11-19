@@ -1,6 +1,7 @@
 use clap::Parser;
 use rayon::prelude::*;
 use std::collections::HashMap;
+use std::ops::Range;
 use std::path::{Path, PathBuf};
 
 mod signature_parser;
@@ -11,6 +12,10 @@ mod signature_parser;
 struct Args {
     /// Path to the IDA C export file
     input: PathBuf,
+
+    /// Path to the IDA C header file
+    #[arg(long)]
+    header: Option<PathBuf>,
 
     /// Output directory for the split files
     #[arg(short, long, default_value = "output")]
@@ -33,13 +38,78 @@ fn main() {
         .init();
 
     let args = Args::parse();
+    let output = &args.output;
 
-    tracing::info!("Opening file: {}", args.input.display());
-    let file = std::fs::File::open(&args.input).expect("Failed to open file");
-    let mmap = unsafe { memmap2::Mmap::map(&file).expect("Failed to mmap file") };
+    // Prepare output directory
+    std::fs::remove_dir_all(output).ok();
+    std::fs::create_dir_all(output).expect("Failed to create output directory");
+    tracing::info!("Output directory prepared: {}", output.display());
 
+    // Handle cpp file
+    {
+        tracing::info!("Opening cpp file: {}", args.input.display());
+        let cpp_file = std::fs::File::open(&args.input).expect("Failed to open file");
+        let cpp_mmap = unsafe { memmap2::Mmap::map(&cpp_file).expect("Failed to mmap file") };
+
+        // Parse cpp file
+        let cpp_file = parse_cpp_file(&cpp_mmap);
+
+        // Create file tree hierarchy
+        create_file_tree(&cpp_file.functions, &cpp_mmap, output);
+
+        // Write data declarations
+        tracing::info!("Writing data declarations");
+        std::fs::write(
+            output.join("__data_declarations.cpp"),
+            &cpp_mmap[cpp_file.data_declarations],
+        )
+        .expect("Failed to write __data_declarations.cpp");
+    }
+
+    tracing::info!("Output produced: {}", output.display());
+}
+
+/// Sanitizes a filename for Windows compatibility
+fn sanitize_filename(name: &str) -> String {
+    // Invalid Windows characters: < > : " / \ | ? *
+    let mut sanitized = name
+        .replace('<', "(")
+        .replace('>', ")")
+        .replace(':', "_")
+        .replace('"', "'")
+        .replace(['/', '\\', '|', '?', '*'], "_");
+
+    // Handle reserved Windows names
+    let reserved_names = [
+        "CON", "PRN", "AUX", "NUL", "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8",
+        "COM9", "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9",
+    ];
+
+    if reserved_names.contains(&sanitized.to_uppercase().as_str()) {
+        sanitized = format!("_{}", sanitized);
+    }
+
+    // Remove trailing dots and spaces (not allowed on Windows)
+    sanitized = sanitized
+        .trim_end_matches('.')
+        .trim_end_matches(' ')
+        .to_string();
+
+    // Ensure not empty
+    if sanitized.is_empty() {
+        sanitized = "_".to_string();
+    }
+
+    sanitized
+}
+
+struct CppFile {
+    data_declarations: Range<usize>,
+    functions: Vec<Function>,
+}
+fn parse_cpp_file(mmap: &[u8]) -> CppFile {
     // Find section markers
-    let function_declarations = memchr::memmem::find(&mmap, b"// Function declarations")
+    let function_declarations = memchr::memmem::find(mmap, b"// Function declarations")
         .expect("Failed to find function declarations");
     tracing::debug!(
         "Found function declarations at offset: {}",
@@ -85,55 +155,10 @@ fn main() {
         })
         .collect();
 
-    // Create output directory
-    std::fs::create_dir_all(&args.output).expect("Failed to create output directory");
-
-    // Write data declarations
-    tracing::info!("Writing data declarations");
-    std::fs::write(
-        args.output.join("__data_declarations.cpp"),
-        &mmap[data_declarations..functions[0].offset],
-    )
-    .expect("Failed to write __data_declarations.cpp");
-
-    // Create file tree hierarchy
-    create_file_tree(&functions, &mmap, &args.output);
-
-    tracing::info!("File tree created in {} directory", args.output.display());
-}
-
-/// Sanitizes a filename for Windows compatibility
-fn sanitize_filename(name: &str) -> String {
-    // Invalid Windows characters: < > : " / \ | ? *
-    let mut sanitized = name
-        .replace('<', "(")
-        .replace('>', ")")
-        .replace(':', "_")
-        .replace('"', "'")
-        .replace(['/', '\\', '|', '?', '*'], "_");
-
-    // Handle reserved Windows names
-    let reserved_names = [
-        "CON", "PRN", "AUX", "NUL", "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8",
-        "COM9", "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9",
-    ];
-
-    if reserved_names.contains(&sanitized.to_uppercase().as_str()) {
-        sanitized = format!("_{}", sanitized);
+    CppFile {
+        data_declarations: data_declarations..functions[0].offset,
+        functions,
     }
-
-    // Remove trailing dots and spaces (not allowed on Windows)
-    sanitized = sanitized
-        .trim_end_matches('.')
-        .trim_end_matches(' ')
-        .to_string();
-
-    // Ensure not empty
-    if sanitized.is_empty() {
-        sanitized = "_".to_string();
-    }
-
-    sanitized
 }
 
 /// Strips template parameters from a segment name
