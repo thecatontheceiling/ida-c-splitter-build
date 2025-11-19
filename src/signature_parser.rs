@@ -23,15 +23,31 @@ pub fn parse_signature(signature: &str) -> Vec<String> {
 
     // For function pointer return types, there may be multiple calling conventions
     // (one in the return type, one for the function itself). We want the LAST one.
+    // However, we need to ensure we're matching actual calling conventions, not
+    // embedded strings in mangled names (e.g., "bool____cdecl___" in a mangled name).
+    // A real calling convention is preceded by whitespace or start of string.
     let function_path = calling_conventions
         .iter()
         .flat_map(|&conv| {
-            // Find all occurrences of this calling convention
+            // Find all occurrences of this calling convention that are actual keywords
             let mut positions = Vec::new();
             let mut start = 0;
             while let Some(pos) = signature[start..].find(conv) {
-                positions.push(start + pos);
-                start = start + pos + conv.len();
+                let abs_pos = start + pos;
+                // Check if this is a real calling convention (preceded by whitespace, *, &, (, or at start)
+                // A calling convention in a return type can be preceded by * or & (e.g., "void *__fastcall")
+                // or by ( for function pointers (e.g., "void (__fastcall *...")
+                let is_valid = abs_pos == 0
+                    || signature[..abs_pos]
+                        .chars()
+                        .last()
+                        .map(|c| c.is_whitespace() || c == '*' || c == '&' || c == '(')
+                        .unwrap_or(false);
+
+                if is_valid {
+                    positions.push(abs_pos);
+                }
+                start = abs_pos + conv.len();
             }
             positions.into_iter().map(move |pos| (pos, conv))
         })
@@ -45,6 +61,12 @@ pub fn parse_signature(signature: &str) -> Vec<String> {
                     path = path[attr.len()..].trim_start();
                 }
             }
+            // Skip pointer/reference markers that may appear after calling convention
+            // (e.g., "void (__fastcall *Function" should extract "Function", not "*Function")
+            path = path
+                .trim_start_matches('*')
+                .trim_start_matches('&')
+                .trim_start();
             path
         })
         .unwrap_or_else(|| skip_return_type(signature.trim()));
@@ -57,13 +79,59 @@ pub fn parse_signature(signature: &str) -> Vec<String> {
 ///
 /// For signatures like "void SomeFunction" or "void *Namespace::Function",
 /// this returns everything after the return type.
+///
+/// For complex templates like "std::vector<T> *std::Function", we need to find
+/// the last space outside of template brackets to separate the return type from
+/// the function name.
+///
+/// For multi-token return types like "unsigned __int64 Namespace::Function",
+/// we need to find the last space before the function name starts.
 fn skip_return_type(signature: &str) -> &str {
-    // Find the first occurrence of ::
-    if let Some(scope_pos) = signature.find("::") {
-        // Backtrack to find the last space before ::
-        let before_scope = &signature[..scope_pos];
-        if let Some(space_pos) = before_scope.rfind(' ') {
-            // Skip any pointer/reference markers after the space
+    let has_templates = signature.contains('<');
+
+    if has_templates {
+        // For template signatures, find the last space outside brackets
+        // This handles both template return types and template function names
+        let mut bracket_depth = 0;
+        let mut last_space_outside_brackets = None;
+
+        for (i, ch) in signature.char_indices() {
+            match ch {
+                '<' => bracket_depth += 1,
+                '>' => bracket_depth -= 1,
+                ' ' if bracket_depth == 0 => last_space_outside_brackets = Some(i),
+                _ => {}
+            }
+        }
+
+        if let Some(space_pos) = last_space_outside_brackets {
+            let after_space = &signature[space_pos..].trim_start();
+            return after_space
+                .trim_start_matches('*')
+                .trim_start_matches('&')
+                .trim_start();
+        }
+    } else if let Some(first_scope_pos) = find_first_scope_resolution(signature) {
+        // No templates, but has `::` - find the last space before the first `::`
+        // This handles multi-token return types like "unsigned __int64 Namespace::Function"
+        let mut last_space_before_scope = None;
+
+        for (i, ch) in signature[..first_scope_pos].char_indices() {
+            if ch == ' ' {
+                last_space_before_scope = Some(i);
+            }
+        }
+
+        if let Some(space_pos) = last_space_before_scope {
+            let after_space = &signature[space_pos..].trim_start();
+            return after_space
+                .trim_start_matches('*')
+                .trim_start_matches('&')
+                .trim_start();
+        }
+    } else {
+        // No templates, no `::` - simple case, use first space
+        if let Some(space_pos) = signature.find(' ') {
             let after_space = &signature[space_pos..].trim_start();
             return after_space
                 .trim_start_matches('*')
@@ -72,18 +140,29 @@ fn skip_return_type(signature: &str) -> &str {
         }
     }
 
-    // No :: found, so this is a simple function name
-    // Find the first space and return everything after it
-    if let Some(space_pos) = signature.find(' ') {
-        let after_space = &signature[space_pos..].trim_start();
-        return after_space
-            .trim_start_matches('*')
-            .trim_start_matches('&')
-            .trim_start();
-    }
-
     // No space found, return the whole thing (shouldn't happen in practice)
     signature
+}
+
+/// Finds the position of the first `::` outside of template brackets.
+fn find_first_scope_resolution(s: &str) -> Option<usize> {
+    let mut bracket_depth = 0;
+    let mut chars = s.char_indices().peekable();
+
+    while let Some((i, ch)) = chars.next() {
+        match ch {
+            '<' => bracket_depth += 1,
+            '>' => bracket_depth -= 1,
+            ':' if bracket_depth == 0 => {
+                if chars.peek().map(|(_, c)| *c) == Some(':') {
+                    return Some(i);
+                }
+            }
+            _ => {}
+        }
+    }
+
+    None
 }
 
 /// Splits a C++ qualified name by `::` while preserving content within template brackets.
