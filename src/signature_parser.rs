@@ -23,15 +23,30 @@ pub fn parse_signature(signature: &str) -> Vec<String> {
 
     // For function pointer return types, there may be multiple calling conventions
     // (one in the return type, one for the function itself). We want the LAST one.
+    // However, we need to ensure we're matching actual calling conventions, not
+    // embedded strings in mangled names (e.g., "bool____cdecl___" in a mangled name).
+    // A real calling convention is preceded by whitespace or start of string.
     let function_path = calling_conventions
         .iter()
         .flat_map(|&conv| {
-            // Find all occurrences of this calling convention
+            // Find all occurrences of this calling convention that are actual keywords
             let mut positions = Vec::new();
             let mut start = 0;
             while let Some(pos) = signature[start..].find(conv) {
-                positions.push(start + pos);
-                start = start + pos + conv.len();
+                let abs_pos = start + pos;
+                // Check if this is a real calling convention (preceded by whitespace, *, &, or at start)
+                // A calling convention in a return type can be preceded by * or & (e.g., "void *__fastcall")
+                let is_valid = abs_pos == 0
+                    || signature[..abs_pos]
+                        .chars()
+                        .last()
+                        .map(|c| c.is_whitespace() || c == '*' || c == '&')
+                        .unwrap_or(false);
+
+                if is_valid {
+                    positions.push(abs_pos);
+                }
+                start = abs_pos + conv.len();
             }
             positions.into_iter().map(move |pos| (pos, conv))
         })
@@ -57,29 +72,45 @@ pub fn parse_signature(signature: &str) -> Vec<String> {
 ///
 /// For signatures like "void SomeFunction" or "void *Namespace::Function",
 /// this returns everything after the return type.
+///
+/// For complex templates like "std::vector<T> *std::Function", we need to find
+/// the last space outside of template brackets to separate the return type from
+/// the function name.
 fn skip_return_type(signature: &str) -> &str {
-    // Find the first occurrence of ::
-    if let Some(scope_pos) = signature.find("::") {
-        // Backtrack to find the last space before ::
-        let before_scope = &signature[..scope_pos];
-        if let Some(space_pos) = before_scope.rfind(' ') {
-            // Skip any pointer/reference markers after the space
+    // Check if the signature contains template brackets
+    let has_templates = signature.contains('<');
+
+    if has_templates {
+        // For complex template signatures, find the last space outside brackets
+        let mut bracket_depth = 0;
+        let mut last_space_outside_brackets = None;
+
+        for (i, ch) in signature.char_indices() {
+            match ch {
+                '<' => bracket_depth += 1,
+                '>' => bracket_depth -= 1,
+                ' ' if bracket_depth == 0 => last_space_outside_brackets = Some(i),
+                _ => {}
+            }
+        }
+
+        if let Some(space_pos) = last_space_outside_brackets {
             let after_space = &signature[space_pos..].trim_start();
             return after_space
                 .trim_start_matches('*')
                 .trim_start_matches('&')
                 .trim_start();
         }
-    }
-
-    // No :: found, so this is a simple function name
-    // Find the first space and return everything after it
-    if let Some(space_pos) = signature.find(' ') {
-        let after_space = &signature[space_pos..].trim_start();
-        return after_space
-            .trim_start_matches('*')
-            .trim_start_matches('&')
-            .trim_start();
+    } else {
+        // For simple signatures without templates, use the original logic
+        // Find the first space and return everything after it
+        if let Some(space_pos) = signature.find(' ') {
+            let after_space = &signature[space_pos..].trim_start();
+            return after_space
+                .trim_start_matches('*')
+                .trim_start_matches('&')
+                .trim_start();
+        }
     }
 
     // No space found, return the whole thing (shouldn't happen in practice)
