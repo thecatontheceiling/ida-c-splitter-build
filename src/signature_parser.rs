@@ -63,7 +63,10 @@ pub fn parse_signature(signature: &str) -> Vec<String> {
             }
             // Skip pointer/reference markers that may appear after calling convention
             // (e.g., "void (__fastcall *Function" should extract "Function", not "*Function")
-            path = path.trim_start_matches('*').trim_start_matches('&').trim_start();
+            path = path
+                .trim_start_matches('*')
+                .trim_start_matches('&')
+                .trim_start();
             path
         })
         .unwrap_or_else(|| skip_return_type(signature.trim()));
