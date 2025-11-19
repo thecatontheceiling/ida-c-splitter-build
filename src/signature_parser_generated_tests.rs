@@ -3819,3 +3819,96 @@ fn test_signature_320() {
         vec!["CHijackingExplosive", "GetAttachedEffectParameterFunc"]
     );
 }
+
+#[test]
+fn test_signature_321() {
+    let result = parse_signature(
+        "std::_Vector_iterator<std::_Vector_val<CSpawnSystem::SResourceDef *> > *__fastcall max_element_filtered_std::_Vector_iterator_std::_Vector_val_CSpawnSystem::SResourceDef_____ptr64_std::allocator_CSpawnSystem::SResourceDef_____ptr64_______anonymous_namespace_::SFilterResourceDefForLoading_bool____cdecl___CSpawnSystem::SResourceDef_const_____ptr64_CSpawnSystem::SResourceDef_const_____ptr64__",
+    );
+    assert_eq!(
+        result,
+        vec![
+            "max_element_filtered_std",
+            "_Vector_iterator_std",
+            "_Vector_val_CSpawnSystem",
+            "SResourceDef_____ptr64_std",
+            "allocator_CSpawnSystem",
+            "SResourceDef_____ptr64_______anonymous_namespace_",
+            "SFilterResourceDefForLoading_bool____cdecl___CSpawnSystem",
+            "SResourceDef_const_____ptr64_CSpawnSystem",
+            "SResourceDef_const_____ptr64__"
+        ]
+    );
+}
+
+#[test]
+fn test_signature_322() {
+    let result = parse_signature(
+        "std::back_insert_iterator<std::vector<STaskInfo::SPrerequisite> > *std::_Transform<CHashString *,std::back_insert_iterator<std::vector<STaskInfo::SPrerequisite>>,`anonymous namespace'::_lambda146_>",
+    );
+    assert_eq!(
+        result,
+        vec![
+            "std",
+            "_Transform<CHashString *,std::back_insert_iterator<std::vector<STaskInfo::SPrerequisite>>,`anonymous namespace'::_lambda146_>",
+        ]
+    );
+}
+
+#[test]
+fn test_signature_323() {
+    let result = parse_signature(
+        "__int64 __fastcall hkAlgorithm::binarySearch_hkndGeometrySurfaceSeparatorImpl::Edge_hkndGeometrySurfaceSeparatorImpl::Edge_bool____cdecl___hkndGeometrySurfaceSeparatorImpl::Edge_const_____ptr64_hkndGeometrySurfaceSeparatorImpl::Edge_const_____ptr64__",
+    );
+    assert_eq!(
+        result,
+        vec![
+            "hkAlgorithm",
+            "binarySearch_hkndGeometrySurfaceSeparatorImpl",
+            "Edge_hkndGeometrySurfaceSeparatorImpl",
+            "Edge_bool____cdecl___hkndGeometrySurfaceSeparatorImpl",
+            "Edge_const_____ptr64_hkndGeometrySurfaceSeparatorImpl",
+            "Edge_const_____ptr64__",
+        ]
+    );
+}
+
+#[test]
+fn test_signature_324() {
+    let result = parse_signature(
+        "__int64 __fastcall hkAlgorithm::binarySearch_hkndGeometryImpl::EdgeCollection::Edge_hkndGeometryImpl::EdgeCollection::Edge_bool____cdecl___hkndGeometryImpl::EdgeCollection::Edge_const_____ptr64_hkndGeometryImpl::EdgeCollection::Edge_const_____ptr64__",
+    );
+    assert_eq!(
+        result,
+        vec![
+            "hkAlgorithm",
+            "binarySearch_hkndGeometryImpl",
+            "EdgeCollection",
+            "Edge_hkndGeometryImpl",
+            "EdgeCollection",
+            "Edge_bool____cdecl___hkndGeometryImpl",
+            "EdgeCollection",
+            "Edge_const_____ptr64_hkndGeometryImpl",
+            "EdgeCollection",
+            "Edge_const_____ptr64__"
+        ]
+    );
+}
+
+#[test]
+fn test_signature_325() {
+    let result = parse_signature(
+        "__int64 __fastcall hkAlgorithm::binarySearch_hkndIBFracWireBuilder::WireEdge_hkndIBFracWireBuilder::WireEdge_unsigned_int____cdecl___hkndIBFracWireBuilder::WireEdge_const_____ptr64_hkndIBFracWireBuilder::WireEdge_const_____ptr64__",
+    );
+    assert_eq!(
+        result,
+        vec![
+            "hkAlgorithm",
+            "binarySearch_hkndIBFracWireBuilder",
+            "WireEdge_hkndIBFracWireBuilder",
+            "WireEdge_unsigned_int____cdecl___hkndIBFracWireBuilder",
+            "WireEdge_const_____ptr64_hkndIBFracWireBuilder",
+            "WireEdge_const_____ptr64__"
+        ]
+    );
+}

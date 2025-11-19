@@ -318,3 +318,8 @@ CVector4f *(__fastcall *__fastcall CListenerEffects::GetAttachedEffectParameterF
 void (__fastcall **__fastcall hkArrayBase<void (*)(void *,hkClass const *,hkBool,unsigned __int64,void *)>::operator[]
 void (__fastcall *__fastcall TVariant<std::allocator<int>>::GetDestroyFunc
 CVector4f *(__fastcall *__fastcall CHijackingExplosive::GetAttachedEffectParameterFunc
+std::_Vector_iterator<std::_Vector_val<CSpawnSystem::SResourceDef *> > *__fastcall max_element_filtered_std::_Vector_iterator_std::_Vector_val_CSpawnSystem::SResourceDef_____ptr64_std::allocator_CSpawnSystem::SResourceDef_____ptr64_______anonymous_namespace_::SFilterResourceDefForLoading_bool____cdecl___CSpawnSystem::SResourceDef_const_____ptr64_CSpawnSystem::SResourceDef_const_____ptr64__
+std::back_insert_iterator<std::vector<STaskInfo::SPrerequisite> > *std::_Transform<CHashString *,std::back_insert_iterator<std::vector<STaskInfo::SPrerequisite>>,`anonymous namespace'::_lambda146_>
+__int64 __fastcall hkAlgorithm::binarySearch_hkndGeometrySurfaceSeparatorImpl::Edge_hkndGeometrySurfaceSeparatorImpl::Edge_bool____cdecl___hkndGeometrySurfaceSeparatorImpl::Edge_const_____ptr64_hkndGeometrySurfaceSeparatorImpl::Edge_const_____ptr64__
+__int64 __fastcall hkAlgorithm::binarySearch_hkndGeometryImpl::EdgeCollection::Edge_hkndGeometryImpl::EdgeCollection::Edge_bool____cdecl___hkndGeometryImpl::EdgeCollection::Edge_const_____ptr64_hkndGeometryImpl::EdgeCollection::Edge_const_____ptr64__
+__int64 __fastcall hkAlgorithm::binarySearch_hkndIBFracWireBuilder::WireEdge_hkndIBFracWireBuilder::WireEdge_unsigned_int____cdecl___hkndIBFracWireBuilder::WireEdge_const_____ptr64_hkndIBFracWireBuilder::WireEdge_const_____ptr64__

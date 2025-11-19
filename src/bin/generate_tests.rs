@@ -1,6 +1,7 @@
 use ida_c_splitter::signature_parser::parse_signature;
 use std::fs;
 use std::io::Write;
+use std::process::Command;
 
 fn main() {
     let signatures =
@@ -48,6 +49,16 @@ fn main() {
     let mut file = fs::File::create(output_path).expect("Failed to create output file");
     file.write_all(output.as_bytes())
         .expect("Failed to write to output file");
+
+    // Format the generated file with cargo fmt
+    let fmt_status = Command::new("cargo")
+        .arg("fmt")
+        .status()
+        .expect("Failed to execute cargo fmt");
+
+    if !fmt_status.success() {
+        eprintln!("Warning: cargo fmt exited with non-zero status code");
+    }
 
     println!(
         "Generated {} test cases in {}",
