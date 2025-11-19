@@ -3850,7 +3850,7 @@ fn test_signature_322() {
         result,
         vec![
             "std",
-            "_Transform<CHashString *,std::back_insert_iterator<std::vector<STaskInfo::SPrerequisite>>,`anonymous namespace'::_lambda146_>",
+            "_Transform<CHashString *,std::back_insert_iterator<std::vector<STaskInfo::SPrerequisite>>,`anonymous namespace'::_lambda146_>"
         ]
     );
 }
@@ -3868,7 +3868,7 @@ fn test_signature_323() {
             "Edge_hkndGeometrySurfaceSeparatorImpl",
             "Edge_bool____cdecl___hkndGeometrySurfaceSeparatorImpl",
             "Edge_const_____ptr64_hkndGeometrySurfaceSeparatorImpl",
-            "Edge_const_____ptr64__",
+            "Edge_const_____ptr64__"
         ]
     );
 }
@@ -3911,4 +3911,70 @@ fn test_signature_325() {
             "WireEdge_const_____ptr64__"
         ]
     );
+}
+
+#[test]
+fn test_signature_326() {
+    let result = parse_signature(
+        "void (__fastcall *dynamic_initializer_for__OSuite::ZSocket::m_staticSocketInitializer__",
+    );
+    assert_eq!(
+        result,
+        vec![
+            "dynamic_initializer_for__OSuite",
+            "ZSocket",
+            "m_staticSocketInitializer__"
+        ]
+    );
+}
+
+#[test]
+fn test_signature_327() {
+    let result = parse_signature(
+        "unsigned __int8 *Scaleform::Render::MatrixPoolImpl::_dynamic_initializer_for__HMatrix_DefaultMatrixData__",
+    );
+    assert_eq!(
+        result,
+        vec![
+            "Scaleform",
+            "Render",
+            "MatrixPoolImpl",
+            "_dynamic_initializer_for__HMatrix_DefaultMatrixData__"
+        ]
+    );
+}
+
+#[test]
+fn test_signature_328() {
+    let result = parse_signature(
+        "unsigned __int64 *dynamic_initializer_for__Scaleform::GFx::AS3::HashTable_Scaleform::GFx::AS3::Object::DynAttrsKey_Scaleform::GFx::AS3::Value_Scaleform::GFx::AS3::Object::DynAttrsKey::HashFunctor_332_::Sentinel__",
+    );
+    assert_eq!(
+        result,
+        vec![
+            "dynamic_initializer_for__Scaleform",
+            "GFx",
+            "AS3",
+            "HashTable_Scaleform",
+            "GFx",
+            "AS3",
+            "Object",
+            "DynAttrsKey_Scaleform",
+            "GFx",
+            "AS3",
+            "Value_Scaleform",
+            "GFx",
+            "AS3",
+            "Object",
+            "DynAttrsKey",
+            "HashFunctor_332_",
+            "Sentinel__"
+        ]
+    );
+}
+
+#[test]
+fn test_signature_329() {
+    let result = parse_signature("unsigned __int64 Scaleform::SPrintF");
+    assert_eq!(result, vec!["Scaleform", "SPrintF"]);
 }

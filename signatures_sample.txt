@@ -323,3 +323,7 @@ std::back_insert_iterator<std::vector<STaskInfo::SPrerequisite> > *std::_Transfo
 __int64 __fastcall hkAlgorithm::binarySearch_hkndGeometrySurfaceSeparatorImpl::Edge_hkndGeometrySurfaceSeparatorImpl::Edge_bool____cdecl___hkndGeometrySurfaceSeparatorImpl::Edge_const_____ptr64_hkndGeometrySurfaceSeparatorImpl::Edge_const_____ptr64__
 __int64 __fastcall hkAlgorithm::binarySearch_hkndGeometryImpl::EdgeCollection::Edge_hkndGeometryImpl::EdgeCollection::Edge_bool____cdecl___hkndGeometryImpl::EdgeCollection::Edge_const_____ptr64_hkndGeometryImpl::EdgeCollection::Edge_const_____ptr64__
 __int64 __fastcall hkAlgorithm::binarySearch_hkndIBFracWireBuilder::WireEdge_hkndIBFracWireBuilder::WireEdge_unsigned_int____cdecl___hkndIBFracWireBuilder::WireEdge_const_____ptr64_hkndIBFracWireBuilder::WireEdge_const_____ptr64__
+void (__fastcall *dynamic_initializer_for__OSuite::ZSocket::m_staticSocketInitializer__
+unsigned __int8 *Scaleform::Render::MatrixPoolImpl::_dynamic_initializer_for__HMatrix_DefaultMatrixData__
+unsigned __int64 *dynamic_initializer_for__Scaleform::GFx::AS3::HashTable_Scaleform::GFx::AS3::Object::DynAttrsKey_Scaleform::GFx::AS3::Value_Scaleform::GFx::AS3::Object::DynAttrsKey::HashFunctor_332_::Sentinel__
+unsigned __int64 Scaleform::SPrintF
