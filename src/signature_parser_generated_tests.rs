@@ -3701,3 +3701,121 @@ fn test_signature_311() {
         vec!["dynamic_atexit_destructor_for__hash_mission_b___0"]
     );
 }
+
+#[test]
+fn test_signature_312() {
+    let result = parse_signature(
+        "void (__fastcall **__fastcall std::_Unique_ptr_base<SAdfContext,void (*)(SAdfContext *),0>::get_deleter",
+    );
+    assert_eq!(
+        result,
+        vec![
+            "std",
+            "_Unique_ptr_base<SAdfContext,void (*)(SAdfContext *),0>",
+            "get_deleter"
+        ]
+    );
+}
+
+#[test]
+fn test_signature_313() {
+    let result = parse_signature(
+        "void (__fastcall *__fastcall OSuite::fastdelegate::detail::ClosurePtr<void (OSuite::fastdelegate::detail::GenericClass::*)(OSuite::SCallbackData *),void (*)(OSuite::SCallbackData *),void (*)(OSuite::SCallbackData *)>::GetClosureMemPtr",
+    );
+    assert_eq!(
+        result,
+        vec![
+            "OSuite",
+            "fastdelegate",
+            "detail",
+            "ClosurePtr<void (OSuite::fastdelegate::detail::GenericClass::*)(OSuite::SCallbackData *),void (*)(OSuite::SCallbackData *),void (*)(OSuite::SCallbackData *)>",
+            "GetClosureMemPtr"
+        ]
+    );
+}
+
+#[test]
+fn test_signature_314() {
+    let result = parse_signature(
+        "void __fastcall __noreturn CRenderBlockTerrainDetailSetup::CRenderBlockTypeTerrainDetailSetup::GetVersion",
+    );
+    assert_eq!(
+        result,
+        vec![
+            "CRenderBlockTerrainDetailSetup",
+            "CRenderBlockTypeTerrainDetailSetup",
+            "GetVersion"
+        ]
+    );
+}
+
+#[test]
+fn test_signature_315() {
+    let result =
+        parse_signature("void __fastcall __noreturn std::vector<COpenAutomateImpl::BMInfo>::_Xlen");
+    assert_eq!(
+        result,
+        vec!["std", "vector<COpenAutomateImpl::BMInfo>", "_Xlen"]
+    );
+}
+
+#[test]
+fn test_signature_316() {
+    let result = parse_signature(
+        "CVector4f *(__fastcall *__fastcall CEffectsTemplateContainer::GetAttachedEffectParameterFunc",
+    );
+    assert_eq!(
+        result,
+        vec![
+            "CEffectsTemplateContainer",
+            "GetAttachedEffectParameterFunc"
+        ]
+    );
+}
+
+#[test]
+fn test_signature_317() {
+    let result = parse_signature(
+        "CVector4f *(__fastcall *__fastcall CListenerEffects::GetAttachedEffectParameterFunc",
+    );
+    assert_eq!(
+        result,
+        vec!["CListenerEffects", "GetAttachedEffectParameterFunc"]
+    );
+}
+
+#[test]
+fn test_signature_318() {
+    let result = parse_signature(
+        "void (__fastcall **__fastcall hkArrayBase<void (*)(void *,hkClass const *,hkBool,unsigned __int64,void *)>::operator[]",
+    );
+    assert_eq!(
+        result,
+        vec![
+            "hkArrayBase<void (*)(void *,hkClass const *,hkBool,unsigned __int64,void *)>",
+            "operator[]"
+        ]
+    );
+}
+
+#[test]
+fn test_signature_319() {
+    let result = parse_signature(
+        "void (__fastcall *__fastcall TVariant<std::allocator<int>>::GetDestroyFunc",
+    );
+    assert_eq!(
+        result,
+        vec!["TVariant<std::allocator<int>>", "GetDestroyFunc"]
+    );
+}
+
+#[test]
+fn test_signature_320() {
+    let result = parse_signature(
+        "CVector4f *(__fastcall *__fastcall CHijackingExplosive::GetAttachedEffectParameterFunc",
+    );
+    assert_eq!(
+        result,
+        vec!["CHijackingExplosive", "GetAttachedEffectParameterFunc"]
+    );
+}

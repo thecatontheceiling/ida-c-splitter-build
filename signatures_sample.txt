@@ -309,3 +309,12 @@ void dynamic_initializer_for__hkpDashpotActionClass__
 __int64 NCharacter::_dynamic_atexit_destructor_for__S_RUN_GRPL_FIRE_180L__
 void dynamic_atexit_destructor_for__s_wingsuit_evade_reticle_align__
 __int64 dynamic_atexit_destructor_for__hash_mission_b___0
+void (__fastcall **__fastcall std::_Unique_ptr_base<SAdfContext,void (*)(SAdfContext *),0>::get_deleter
+void (__fastcall *__fastcall OSuite::fastdelegate::detail::ClosurePtr<void (OSuite::fastdelegate::detail::GenericClass::*)(OSuite::SCallbackData *),void (*)(OSuite::SCallbackData *),void (*)(OSuite::SCallbackData *)>::GetClosureMemPtr
+void __fastcall __noreturn CRenderBlockTerrainDetailSetup::CRenderBlockTypeTerrainDetailSetup::GetVersion
+void __fastcall __noreturn std::vector<COpenAutomateImpl::BMInfo>::_Xlen
+CVector4f *(__fastcall *__fastcall CEffectsTemplateContainer::GetAttachedEffectParameterFunc
+CVector4f *(__fastcall *__fastcall CListenerEffects::GetAttachedEffectParameterFunc
+void (__fastcall **__fastcall hkArrayBase<void (*)(void *,hkClass const *,hkBool,unsigned __int64,void *)>::operator[]
+void (__fastcall *__fastcall TVariant<std::allocator<int>>::GetDestroyFunc
+CVector4f *(__fastcall *__fastcall CHijackingExplosive::GetAttachedEffectParameterFunc
