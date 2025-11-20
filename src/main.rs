@@ -167,7 +167,7 @@ fn create_header_file_tree(header_file: &HeaderFile, mmap: &[u8], output_dir: &P
         .iter()
         .filter_map(|def| {
             let def = def.as_str();
-            let segments = type_parser::parse_type(def.strip_suffix(";").unwrap_or(def));
+            let segments = type_parser::parse_type(def);
             // Skip if this segment already exists in types
             if type_segments.contains(&segments) {
                 None

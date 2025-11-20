@@ -16,6 +16,7 @@
 /// ```
 pub fn parse_type(type_def: &str) -> Vec<String> {
     let type_def = type_def.trim();
+    let type_def = type_def.strip_suffix(";").unwrap_or(type_def);
 
     // Strip comments like /*VFT*/
     let type_def = strip_comments(type_def);
