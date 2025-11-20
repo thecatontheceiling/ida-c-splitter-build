@@ -40,8 +40,8 @@ fn main() {
     std::fs::create_dir_all(output).expect("Failed to create output directory");
     tracing::info!("Output directory prepared: {}", output.display());
 
-    // Handle header file
-    if let Some(header) = &args.header {
+    // Build type hierarchy from header file (if available)
+    let type_hierarchy = if let Some(header) = &args.header {
         tracing::info!("Opening header file: {}", header.display());
         let header_file = std::fs::File::open(header).expect("Failed to open file");
         let header_mmap = unsafe { memmap2::Mmap::map(&header_file).expect("Failed to mmap file") };
@@ -49,9 +49,16 @@ fn main() {
         // Parse header file
         let header_file = parse_header_file(&header_mmap);
 
+        // Build type hierarchy
+        let type_hierarchy = build_type_hierarchy(&header_file);
+
         // Create file tree hierarchy for types and empty_defs
-        create_header_file_tree(&header_file, &header_mmap, output);
-    }
+        create_header_file_tree(&header_file, &header_mmap, output, &type_hierarchy);
+
+        type_hierarchy
+    } else {
+        HashMap::new()
+    };
 
     // Handle cpp file
     {
@@ -63,7 +70,7 @@ fn main() {
         let cpp_file = parse_cpp_file(&cpp_mmap);
 
         // Create file tree hierarchy
-        create_impl_file_tree(&cpp_file.functions, &cpp_mmap, output);
+        create_impl_file_tree(&cpp_file.functions, &cpp_mmap, output, &type_hierarchy);
 
         // Write data declarations
         tracing::info!("Writing data declarations");
@@ -152,8 +159,59 @@ fn parse_header_file(mmap: &[u8]) -> HeaderFile {
     output
 }
 
+/// Builds a map of type names to their root type segments in the hierarchy.
+/// Types that are nested within other types will map to their outermost parent.
+/// For example, if we have:
+///   - CFile
+///   - CFile::SFileState
+///   - CFile::SFileState::EState
+/// Then all three will map to ["CFile"] as their root segments.
+fn build_type_hierarchy(header_file: &HeaderFile) -> HashMap<String, Vec<String>> {
+    // Phase 1: Collect all known type names and their segments
+    let all_types: HashMap<String, Vec<String>> = header_file
+        .types
+        .iter()
+        .map(|(_, type_def)| {
+            let segments = type_parser::parse_type(type_def);
+            let type_name = segments.join("::");
+            (type_name, segments)
+        })
+        .collect();
+
+    // Phase 2: For each type, find its root by walking up the hierarchy
+    let mut type_roots: HashMap<String, Vec<String>> = HashMap::new();
+
+    for (type_name, segments) in &all_types {
+        // Start with the type itself as the root
+        let mut root_segments = segments.clone();
+
+        // Walk up the hierarchy from parent to grandparent, etc.
+        for i in (1..segments.len()).rev() {
+            let parent = segments[..i].join("::");
+            if all_types.contains_key(&parent) {
+                // Parent exists as a type, so this might be nested
+                // Keep the parent as our current root candidate
+                root_segments = segments[..i].to_vec();
+            } else {
+                // Parent is not a known type (it's a namespace or doesn't exist)
+                // We've found our root
+                break;
+            }
+        }
+
+        type_roots.insert(type_name.clone(), root_segments);
+    }
+
+    type_roots
+}
+
 /// Creates the file tree hierarchy from type definitions
-fn create_header_file_tree(header_file: &HeaderFile, mmap: &[u8], output_dir: &Path) {
+fn create_header_file_tree(
+    header_file: &HeaderFile,
+    mmap: &[u8],
+    output_dir: &Path,
+    type_hierarchy: &HashMap<String, Vec<String>>,
+) {
     // First, collect all type segments to identify which empty_defs to skip
     let type_segments: HashSet<Vec<String>> = header_file
         .types
@@ -186,23 +244,32 @@ fn create_header_file_tree(header_file: &HeaderFile, mmap: &[u8], output_dir: &P
 
     for (segments, body) in items {
         let path = {
+            // Determine which segments to use for file path
+            let type_name = segments.join("::");
+            let effective_segments = if let Some(root_segments) = type_hierarchy.get(&type_name) {
+                // Use root type segments if part of a hierarchy
+                root_segments
+            } else {
+                // Use original segments as fallback
+                &segments
+            };
+
+            if effective_segments.is_empty() {
+                panic!("Empty segments for type: {:?} {:?}", segments, body);
+            }
+
             let mut path = output_dir.to_path_buf();
 
-            // Everything up to n-1 segments become folders (all but the last one)
-            // Strip template parameters to group template instantiations together
-            if segments.len() > 1 {
-                for segment in &segments[..segments.len() - 1] {
+            // Create directory structure from parent namespaces (all but last segment)
+            if effective_segments.len() > 1 {
+                for segment in &effective_segments[..effective_segments.len() - 1] {
                     let stripped = strip_template_params(segment);
                     path.push(sanitize_filename(stripped));
                 }
             }
 
-            // n-1 segment becomes the filename (last)
-            // Strip template parameters so all instantiations go into the same file
-            if segments.is_empty() {
-                panic!("{:?} {:?}", segments, body);
-            }
-            let stripped = strip_template_params(&segments[segments.len() - 1]);
+            // Last segment becomes the filename
+            let stripped = strip_template_params(&effective_segments[effective_segments.len() - 1]);
             let target_filename = sanitize_filename(stripped);
             let target_filename = target_filename
                 .strip_suffix("_vtbl")
@@ -299,7 +366,12 @@ fn parse_cpp_file(mmap: &[u8]) -> CppFile {
 }
 
 /// Creates the file tree hierarchy from function definitions
-fn create_impl_file_tree(functions: &[Function], mmap: &[u8], output_dir: &Path) {
+fn create_impl_file_tree(
+    functions: &[Function],
+    mmap: &[u8],
+    output_dir: &Path,
+    type_hierarchy: &HashMap<String, Vec<String>>,
+) {
     // Group functions by their target file path
     let mut file_groups: HashMap<PathBuf, Vec<usize>> = HashMap::new();
 
@@ -307,22 +379,35 @@ fn create_impl_file_tree(functions: &[Function], mmap: &[u8], output_dir: &Path)
         let path = {
             let segments = &func.segments;
             if segments.len() < 2 {
-                // Types with < 2 segments go into global.h or global.cpp
+                // Functions with < 2 segments go into global.cpp
                 output_dir.join("global.cpp")
             } else {
+                // For functions, segments are [namespace/class, ..., class, method]
+                // The containing scope is everything except the last element (the method name)
+                let scope = segments[..segments.len() - 1].join("::");
+
+                // Determine which segments to use for file path
+                let effective_segments: &[String] = if let Some(root_segments) = type_hierarchy.get(&scope) {
+                    // Use root type segments if part of a hierarchy
+                    root_segments
+                } else {
+                    // Use segments[0..n-2] for namespace behavior (class name, not method)
+                    &segments[..segments.len() - 1]
+                };
+
                 let mut path = output_dir.to_path_buf();
-                // Everything up to n-2 segments become folders (all but the last two)
-                // Strip template parameters to group template instantiations together
-                if segments.len() > 2 {
-                    for segment in &segments[..segments.len() - 2] {
+
+                // Create directory structure from parent namespaces (all but last segment)
+                if effective_segments.len() > 1 {
+                    for segment in &effective_segments[..effective_segments.len() - 1] {
                         let stripped = strip_template_params(segment);
                         path.push(sanitize_filename(stripped));
                     }
                 }
 
-                // n-1 segment becomes the filename (second to last)
-                // Strip template parameters so all instantiations go into the same file
-                let stripped = strip_template_params(&segments[segments.len() - 2]);
+                // Last segment becomes the filename
+                let stripped =
+                    strip_template_params(&effective_segments[effective_segments.len() - 1]);
                 let filename = format!("{}.cpp", sanitize_filename(stripped));
                 path.push(filename);
                 path
