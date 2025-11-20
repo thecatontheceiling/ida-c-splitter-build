@@ -9414,7 +9414,7 @@ fn test_type_832() {
 #[test]
 fn test_type_833() {
     let result = parse_type("struct NDestruction;");
-    assert_eq!(result, vec!["NDestruction;"]);
+    assert_eq!(result, vec!["NDestruction"]);
 }
 
 #[test]
@@ -10909,15 +10909,35 @@ fn test_type_995() {
 
 #[test]
 fn test_type_996() {
-    let result = parse_type("union simd_extract_fp::__l2::<unnamed_type_u>");
-    assert_eq!(result, vec!["simd_extract_fp", "__l2", "<unnamed_type_u>"]);
+    let result = parse_type(
+        "typedef void *(__fastcall *MemoryAllocatorAlloc)(void *, unsigned __int64, unsigned __int64, unsigned __int8, EMemoryType);",
+    );
+    assert_eq!(result, vec!["MemoryAllocatorAlloc"]);
 }
 
 #[test]
 fn test_type_997() {
-    let result = parse_type("const union boost::detail::function::function_buffer");
+    let result = parse_type(
+        "struct __cppobj __declspec(align(4)) hkSignal3<hkndWorld *,hkHandle<unsigned short,65535,hkndBodyUniqueId>,hkArray<hkndDestructionApiCommandProcessor::BodyReplacementInfo,hkContainerHeapAllocator> const &> : hkSignal",
+    );
     assert_eq!(
         result,
-        vec!["boost", "detail", "function", "function_buffer"]
+        vec![
+            "hkSignal3<hkndWorld *,hkHandle<unsigned short,65535,hkndBodyUniqueId>,hkArray<hkndDestructionApiCommandProcessor::BodyReplacementInfo,hkContainerHeapAllocator> const &>"
+        ]
+    );
+}
+
+#[test]
+fn test_type_998() {
+    let result = parse_type(
+        "struct /*VFT*/ hkSignal3<hkndWorld *,hkHandle<unsigned short,65535,hkndBodyUniqueId>,hkArray<hkndDestructionApiCommandProcessor::BodyReplacementInfo,hkContainerHeapAllocator> const &>::MemberSlot<hkndFlexibleJointRuntime,void (__cdecl hkndFlexibleJointRuntime::*)(hkndWorld *,hkHandle<unsigned short,65535,hkndBodyUniqueId>,hkArray<hkndDestructionApiCommandProcessor::BodyReplacementInfo,hkContainerHeapAllocator> const &)>_vtbl",
+    );
+    assert_eq!(
+        result,
+        vec![
+            "hkSignal3<hkndWorld *,hkHandle<unsigned short,65535,hkndBodyUniqueId>,hkArray<hkndDestructionApiCommandProcessor::BodyReplacementInfo,hkContainerHeapAllocator> const &>",
+            "MemberSlot<hkndFlexibleJointRuntime,void (__cdecl hkndFlexibleJointRuntime::*)(hkndWorld *,hkHandle<unsigned short,65535,hkndBodyUniqueId>,hkArray<hkndDestructionApiCommandProcessor::BodyReplacementInfo,hkContainerHeapAllocator> const &)>_vtbl"
+        ]
     );
 }

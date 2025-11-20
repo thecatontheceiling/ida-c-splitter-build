@@ -993,5 +993,6 @@ union $D14D394676A1F3C855ED2D6CEB6BACFD
 union getVtablehkaiConvexSilhouetteSet::__l2::<unnamed_type_u>
 union getVtablehkdBreakableShapeContactArea::__l2::<unnamed_type_u>
 union getVtablehkndShockWaveAction::__l2::<unnamed_type_u>
-union simd_extract_fp::__l2::<unnamed_type_u>
-const union boost::detail::function::function_buffer
+typedef void *(__fastcall *MemoryAllocatorAlloc)(void *, unsigned __int64, unsigned __int64, unsigned __int8, EMemoryType);
+struct __cppobj __declspec(align(4)) hkSignal3<hkndWorld *,hkHandle<unsigned short,65535,hkndBodyUniqueId>,hkArray<hkndDestructionApiCommandProcessor::BodyReplacementInfo,hkContainerHeapAllocator> const &> : hkSignal
+struct /*VFT*/ hkSignal3<hkndWorld *,hkHandle<unsigned short,65535,hkndBodyUniqueId>,hkArray<hkndDestructionApiCommandProcessor::BodyReplacementInfo,hkContainerHeapAllocator> const &>::MemberSlot<hkndFlexibleJointRuntime,void (__cdecl hkndFlexibleJointRuntime::*)(hkndWorld *,hkHandle<unsigned short,65535,hkndBodyUniqueId>,hkArray<hkndDestructionApiCommandProcessor::BodyReplacementInfo,hkContainerHeapAllocator> const &)>_vtbl

@@ -82,6 +82,12 @@ fn parse_typedef(type_def: &str) -> Vec<String> {
     // This separates the old type from the new type
     let mut type_name = find_last_type_in_typedef(rest);
 
+    // For simple pointers, strip leading * and & characters first
+    type_name = type_name
+        .trim_start_matches('*')
+        .trim_start_matches('&')
+        .trim();
+
     // Handle function pointers: typedef RET (*NAME)(ARGS)
     // or typedef RET (__convention *NAME)(ARGS)
     // The name is after the * inside the first parentheses
@@ -94,12 +100,6 @@ fn parse_typedef(type_def: &str) -> Vec<String> {
                 type_name = after_star[..end].trim();
             }
         }
-    } else {
-        // For simple pointers, strip leading * and & characters
-        type_name = type_name
-            .trim_start_matches('*')
-            .trim_start_matches('&')
-            .trim();
     }
 
     // Now split by :: while preserving templates
