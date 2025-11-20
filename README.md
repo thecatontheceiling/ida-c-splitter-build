@@ -53,6 +53,8 @@ ida-c-splitter game.cpp --header game.h
 RUST_LOG=debug ida-c-splitter game.cpp --header game.h -o output_dir
 ```
 
+**Note:** For best results, include the header file with `--header`. The header contains type definitions that enable proper nested type grouping and hierarchy resolution. Without it, nested types (like `Class::NestedClass`) may be split into separate files instead of being grouped with their parent types.
+
 ## Output Structure
 
 The tool creates organized file trees:
