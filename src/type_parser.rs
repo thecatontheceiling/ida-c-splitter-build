@@ -102,6 +102,30 @@ fn parse_typedef(type_def: &str) -> Vec<String> {
         }
     }
 
+    // Handle function declarations: typedef RET *__convention NAME(ARGS)
+    // The name is before the first ( that's not inside template brackets
+    let mut angle_depth: i32 = 0;
+    let mut found_paren_outside = None;
+    for (i, ch) in type_name.char_indices() {
+        match ch {
+            '<' => angle_depth += 1,
+            '>' => angle_depth = angle_depth.saturating_sub(1),
+            '(' if angle_depth == 0 => {
+                found_paren_outside = Some(i);
+                break;
+            }
+            _ => {}
+        }
+    }
+
+    if let Some(paren_pos) = found_paren_outside {
+        // Extract the name before the parenthesis
+        let before_paren = &type_name[..paren_pos];
+        if !before_paren.is_empty() {
+            type_name = before_paren.trim();
+        }
+    }
+
     // Now split by :: while preserving templates
     split_by_scope_resolution(type_name)
 }

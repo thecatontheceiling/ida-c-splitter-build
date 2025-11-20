@@ -11005,3 +11005,11 @@ fn test_type_1003() {
         ]
     );
 }
+
+#[test]
+fn test_type_1004() {
+    let result = parse_type(
+        "typedef NAnimationSystem::CState *__fastcall StateConstructor(const char *, void *)",
+    );
+    assert_eq!(result, vec!["StateConstructor"]);
+}

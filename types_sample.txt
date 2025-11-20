@@ -1001,3 +1001,4 @@ struct __cppobj __declspec(align(8)) hkLocalArray<hkcdTreeQueries<hkcdTreeQuerie
 struct __cppobj __declspec(align(8)) hkLocalArray<hkndConnectedPieceGroupsCalculator::Connection> : hkArray<hkndConnectedPieceGroupsCalculator::Connection,hkContainerHeapAllocator>
 struct __cppobj __declspec(align(8)) hkLocalArray<hkHandle<unsigned short,65535,hkcdPlanarGeomHullImpl::VertexIdDiscriminant> > : hkArray<hkHandle<unsigned short,65535,hkcdPlanarGeomHullImpl::VertexIdDiscriminant>,hkContainerHeapAllocator>
 struct __cppobj hkgpJobQueue::WrapType<hkgpConvexDecompositionImpl::DecomposeJob>
+typedef NAnimationSystem::CState *__fastcall StateConstructor(const char *, void *)
