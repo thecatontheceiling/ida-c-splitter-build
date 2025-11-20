@@ -27,7 +27,7 @@ pub fn parse_type(type_def: &str) -> Vec<String> {
         parse_enum(&type_def)
     } else if type_def.starts_with("struct ") || type_def.starts_with("const struct ") {
         parse_struct(&type_def)
-    } else if type_def.starts_with("union ") {
+    } else if type_def.starts_with("union ") || type_def.starts_with("const union ") {
         parse_union(&type_def)
     } else {
         // Unknown type, try to extract what we can
@@ -151,10 +151,13 @@ fn parse_struct(type_def: &str) -> Vec<String> {
 }
 
 /// Parse a union declaration
-/// Format: union [__declspec(...)] [namespace::]Name
+/// Format: [const] union [__declspec(...)] [namespace::]Name
 fn parse_union(type_def: &str) -> Vec<String> {
+    // Remove "const " prefix if present
+    let rest = type_def.strip_prefix("const ").unwrap_or(type_def);
+
     // Remove "union " prefix
-    let rest = type_def.strip_prefix("union ").unwrap_or(type_def).trim();
+    let rest = rest.strip_prefix("union ").unwrap_or(rest).trim();
 
     // Skip qualifiers like __declspec(...)
     let rest = skip_struct_qualifiers(rest);

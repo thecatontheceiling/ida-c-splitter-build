@@ -994,3 +994,4 @@ union getVtablehkaiConvexSilhouetteSet::__l2::<unnamed_type_u>
 union getVtablehkdBreakableShapeContactArea::__l2::<unnamed_type_u>
 union getVtablehkndShockWaveAction::__l2::<unnamed_type_u>
 union simd_extract_fp::__l2::<unnamed_type_u>
+const union boost::detail::function::function_buffer

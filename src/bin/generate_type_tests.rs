@@ -21,11 +21,7 @@ fn main() {
 
         // Skip types that produce empty results (these are unsupported or malformed)
         if expected.is_empty() {
-            eprintln!(
-                "Warning: Skipping type that produces empty result: {}",
-                trimmed
-            );
-            continue;
+            eprintln!("Warning: This produces an empty result: {}", trimmed);
         }
 
         // Generate the test case

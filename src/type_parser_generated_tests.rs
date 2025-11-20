@@ -10912,3 +10912,12 @@ fn test_type_996() {
     let result = parse_type("union simd_extract_fp::__l2::<unnamed_type_u>");
     assert_eq!(result, vec!["simd_extract_fp", "__l2", "<unnamed_type_u>"]);
 }
+
+#[test]
+fn test_type_997() {
+    let result = parse_type("const union boost::detail::function::function_buffer");
+    assert_eq!(
+        result,
+        vec!["boost", "detail", "function", "function_buffer"]
+    );
+}
