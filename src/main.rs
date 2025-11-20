@@ -45,6 +45,26 @@ fn main() {
     std::fs::create_dir_all(output).expect("Failed to create output directory");
     tracing::info!("Output directory prepared: {}", output.display());
 
+    // Handle header file
+    if let Some(header) = &args.header {
+        tracing::info!("Opening header file: {}", header.display());
+        let header_file = std::fs::File::open(header).expect("Failed to open file");
+        let header_mmap = unsafe { memmap2::Mmap::map(&header_file).expect("Failed to mmap file") };
+
+        // Parse header file
+        let header_file = parse_header_file(&header_mmap);
+        std::fs::write(
+            output.join("__header.h"),
+            header_file
+                .types
+                .into_iter()
+                .map(|p| p.1)
+                .collect::<Vec<String>>()
+                .join("\n"),
+        )
+        .unwrap();
+    }
+
     // Handle cpp file
     {
         tracing::info!("Opening cpp file: {}", args.input.display());
@@ -101,6 +121,31 @@ fn sanitize_filename(name: &str) -> String {
     }
 
     sanitized
+}
+
+struct HeaderFile {
+    types: Vec<(Range<usize>, String)>,
+}
+fn parse_header_file(mmap: &[u8]) -> HeaderFile {
+    let mut output = HeaderFile { types: Vec::new() };
+    let raw_type_starts: Vec<usize> = memchr::memmem::find_iter(&mmap, b"/* ").collect();
+
+    for (idx, &type_start) in raw_type_starts.iter().enumerate() {
+        let type_slice =
+            &mmap[type_start..raw_type_starts.get(idx + 1).copied().unwrap_or(mmap.len())];
+        let type_def = std::str::from_utf8(type_slice)
+            .unwrap()
+            .lines()
+            .find(|l| !(l.starts_with("//") || l.starts_with("/*") || l.starts_with("#pragma")))
+            .unwrap();
+
+        output.types.push((
+            type_start..type_start + type_def.len(),
+            type_def.to_string(),
+        ));
+    }
+
+    output
 }
 
 struct CppFile {
