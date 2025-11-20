@@ -1,7 +1,6 @@
-/// Parses a C++ type definition to extract the namespace/class/type hierarchy.
-///
-/// This parser handles pseudo-C++ type definitions (struct, enum, typedef, union, etc.)
-/// and extracts the qualified type name, splitting it by `::` while preserving template parameters.
+use crate::split_scope;
+
+/// Parses a C++ type definition to extract namespace/class/type hierarchy.
 ///
 /// # Examples
 ///
@@ -14,253 +13,151 @@
 /// let result = parse_type("struct __cppobj dynamo::vm::machine");
 /// assert_eq!(result, vec!["dynamo", "vm", "machine"]);
 /// ```
-pub fn parse_type(type_def: &str) -> Vec<String> {
-    let type_def = type_def.trim();
-    let type_def = type_def.strip_suffix(";").unwrap_or(type_def);
+pub fn parse_type(def: &str) -> Vec<String> {
+    let def = def.trim().strip_suffix(';').unwrap_or(def.trim());
+    let def = strip_comments(def);
 
-    // Strip comments like /*VFT*/
-    let type_def = strip_comments(type_def);
-
-    // Determine what kind of type definition this is
-    if type_def.starts_with("typedef ") {
-        parse_typedef(&type_def)
-    } else if type_def.starts_with("enum ") || type_def.starts_with("const enum ") {
-        parse_enum(&type_def)
-    } else if type_def.starts_with("struct ") || type_def.starts_with("const struct ") {
-        parse_struct(&type_def)
-    } else if type_def.starts_with("union ") || type_def.starts_with("const union ") {
-        parse_union(&type_def)
+    if def.starts_with("typedef ") {
+        parse_typedef(&def)
+    } else if def.starts_with("enum ") || def.starts_with("const enum ") {
+        parse_enum(&def)
+    } else if def.starts_with("struct ") || def.starts_with("const struct ") {
+        parse_struct(&def)
+    } else if def.starts_with("union ") || def.starts_with("const union ") {
+        parse_union(&def)
     } else {
-        // Unknown type, try to extract what we can
         Vec::new()
     }
 }
 
-/// Strips C-style comments from the input string
 fn strip_comments(s: &str) -> String {
     let mut result = String::new();
     let mut chars = s.chars().peekable();
-
     while let Some(ch) = chars.next() {
-        if ch == '/' {
-            if chars.peek() == Some(&'*') {
-                chars.next(); // consume *
-                // Skip until we find */
-                let mut found_end = false;
-                while let Some(c) = chars.next() {
-                    if c == '*' && chars.peek() == Some(&'/') {
-                        chars.next(); // consume /
-                        found_end = true;
-                        break;
-                    }
+        if ch == '/' && chars.peek() == Some(&'*') {
+            chars.next();
+            while let Some(c) = chars.next() {
+                if c == '*' && chars.peek() == Some(&'/') {
+                    chars.next();
+                    result.push(' ');
+                    break;
                 }
-                if found_end {
-                    result.push(' '); // Replace comment with space
-                }
-            } else {
-                result.push(ch);
             }
         } else {
             result.push(ch);
         }
     }
-
     result
 }
 
-/// Parse a typedef declaration
-/// Format: typedef [old_type] [new_type];
-/// We want to extract the new_type (the rightmost identifier/path)
-fn parse_typedef(type_def: &str) -> Vec<String> {
-    // Remove "typedef " prefix
-    let rest = type_def.strip_prefix("typedef ").unwrap_or(type_def).trim();
-
-    // Remove trailing semicolon if present
-    let rest = rest.trim_end_matches(';').trim();
-
-    // Find the last space outside of template brackets and parentheses
-    // This separates the old type from the new type
-    let mut type_name = find_last_type_in_typedef(rest);
-
-    // For simple pointers, strip leading * and & characters first
-    type_name = type_name
+fn parse_typedef(def: &str) -> Vec<String> {
+    let rest = def
+        .strip_prefix("typedef ")
+        .unwrap_or(def)
+        .trim()
+        .trim_end_matches(';')
+        .trim();
+    let mut name = find_last_type_in_typedef(rest)
         .trim_start_matches('*')
         .trim_start_matches('&')
         .trim();
 
-    // Handle function pointers: typedef RET (*NAME)(ARGS)
-    // or typedef RET (__convention *NAME)(ARGS)
-    // The name is after the * inside the first parentheses
-    if type_name.starts_with('(') && type_name.contains('*') {
-        // Find the * inside the first set of parentheses
-        if let Some(star_pos) = type_name.find('*') {
-            let after_star = &type_name[star_pos + 1..];
-            // Find the closing ) after the name
-            if let Some(end) = after_star.find(')') {
-                type_name = after_star[..end].trim();
+    if name.starts_with('(') && name.contains('*')
+        && let Some(star) = name.find('*')
+            && let Some(end) = name[star + 1..].find(')') {
+                name = name[star + 1..star + 1 + end].trim();
             }
-        }
-    }
 
-    // Handle function declarations: typedef RET *__convention NAME(ARGS)
-    // The name is before the first ( that's not inside template brackets
-    let mut angle_depth: i32 = 0;
-    let mut found_paren_outside = None;
-    for (i, ch) in type_name.char_indices() {
+    let mut depth = 0;
+    for (i, ch) in name.char_indices() {
         match ch {
-            '<' => angle_depth += 1,
-            '>' => angle_depth = angle_depth.saturating_sub(1),
-            '(' if angle_depth == 0 => {
-                found_paren_outside = Some(i);
+            '<' => depth += 1,
+            '>' => depth -= 1,
+            '(' if depth == 0 => {
+                if i > 0 {
+                    name = name[..i].trim();
+                }
                 break;
             }
             _ => {}
         }
     }
 
-    if let Some(paren_pos) = found_paren_outside {
-        // Extract the name before the parenthesis
-        let before_paren = &type_name[..paren_pos];
-        if !before_paren.is_empty() {
-            type_name = before_paren.trim();
-        }
-    }
-
-    // Now split by :: while preserving templates
-    split_by_scope_resolution(type_name)
+    split_scope(name)
 }
 
-/// Parse an enum declaration
-/// Format: [const] enum [__bitmask] [namespace::]Name [: underlying_type]
-fn parse_enum(type_def: &str) -> Vec<String> {
-    // Remove "const " prefix if present
-    let rest = type_def.strip_prefix("const ").unwrap_or(type_def);
-
-    // Remove "enum " prefix
+fn parse_enum(def: &str) -> Vec<String> {
+    let rest = def.strip_prefix("const ").unwrap_or(def);
     let rest = rest.strip_prefix("enum ").unwrap_or(rest).trim();
-
-    // Skip enum qualifiers like __bitmask
     let rest = skip_enum_qualifiers(rest);
-
-    // Split by : to separate the enum name from the underlying type
-    // But only if : is not inside template brackets
-    let enum_name = if let Some(colon_pos) = find_type_separator(rest, ':') {
-        rest[..colon_pos].trim()
-    } else {
-        rest
-    };
-
-    split_by_scope_resolution(enum_name)
+    let name = find_type_separator(rest, ':')
+        .map(|pos| rest[..pos].trim())
+        .unwrap_or(rest);
+    split_scope(name)
 }
 
-/// Parse a struct declaration
-/// Format: [const] struct [__cppobj] [__declspec(...)] [namespace::]Name [: base_classes]
-fn parse_struct(type_def: &str) -> Vec<String> {
-    // Remove "const " prefix if present
-    let rest = type_def.strip_prefix("const ").unwrap_or(type_def);
-
-    // Remove "struct " prefix
+fn parse_struct(def: &str) -> Vec<String> {
+    let rest = def.strip_prefix("const ").unwrap_or(def);
     let rest = rest.strip_prefix("struct ").unwrap_or(rest).trim();
-
-    // Skip qualifiers like __cppobj, __declspec(...), __unaligned
     let rest = skip_struct_qualifiers(rest);
-
-    // Find the struct name (before : or end of string)
-    let struct_name = if let Some(colon_pos) = find_type_separator(rest, ':') {
-        rest[..colon_pos].trim()
-    } else {
-        rest
-    };
-
-    split_by_scope_resolution(struct_name)
+    let name = find_type_separator(rest, ':')
+        .map(|pos| rest[..pos].trim())
+        .unwrap_or(rest);
+    split_scope(name)
 }
 
-/// Parse a union declaration
-/// Format: [const] union [__declspec(...)] [namespace::]Name
-fn parse_union(type_def: &str) -> Vec<String> {
-    // Remove "const " prefix if present
-    let rest = type_def.strip_prefix("const ").unwrap_or(type_def);
-
-    // Remove "union " prefix
+fn parse_union(def: &str) -> Vec<String> {
+    let rest = def.strip_prefix("const ").unwrap_or(def);
     let rest = rest.strip_prefix("union ").unwrap_or(rest).trim();
-
-    // Skip qualifiers like __declspec(...)
     let rest = skip_struct_qualifiers(rest);
-
-    split_by_scope_resolution(rest)
+    split_scope(rest)
 }
 
-/// Skip struct qualifiers like __cppobj, __declspec(align(8)), __unaligned
 fn skip_struct_qualifiers(s: &str) -> &str {
     let mut rest = s;
-
     loop {
-        let original = rest;
+        let before = rest;
         rest = rest.trim_start();
 
-        // Skip __cppobj
         if rest.starts_with("__cppobj ") {
             rest = &rest[9..];
-            continue;
-        }
-
-        // Skip __unaligned
-        if rest.starts_with("__unaligned ") {
+        } else if rest.starts_with("__unaligned ") {
             rest = &rest[12..];
-            continue;
-        }
+        } else if rest.starts_with("__declspec(")
+            && let Some(close) = find_matching_paren(rest, 10) {
+                rest = rest[close + 1..].trim_start();
+            }
 
-        // Skip __declspec(...)
-        if rest.starts_with("__declspec(")
-            && let Some(close_pos) = find_matching_paren(rest, 10)
-        {
-            rest = rest[close_pos + 1..].trim_start();
-            continue;
-        }
-
-        // If nothing changed, we're done
-        if rest == original || rest == original.trim_start() {
+        if rest == before || rest == before.trim_start() {
             break;
         }
     }
-
     rest
 }
 
-/// Skip enum qualifiers like __bitmask
 fn skip_enum_qualifiers(s: &str) -> &str {
     let mut rest = s;
-
     loop {
-        let original = rest;
-        rest = rest.trim_start();
-
-        // Skip __bitmask
-        if rest.starts_with("__bitmask ") {
-            rest = &rest[10..];
-            continue;
-        }
-
-        // If nothing changed, we're done
-        if rest == original || rest == original.trim_start() {
-            break;
+        let before = rest.trim_start();
+        if let Some(stripped) = before.strip_prefix("__bitmask ") {
+            rest = stripped;
+        } else {
+            return before;
         }
     }
-
-    rest
 }
 
-/// Find the position of a matching closing parenthesis
-fn find_matching_paren(s: &str, open_pos: usize) -> Option<usize> {
+fn find_matching_paren(s: &str, open: usize) -> Option<usize> {
     let mut depth = 1;
-    for (i, ch) in s[open_pos + 1..].char_indices() {
+    for (i, ch) in s[open + 1..].char_indices() {
         match ch {
             '(' => depth += 1,
-            ')' => {
+            ')' if {
                 depth -= 1;
-                if depth == 0 {
-                    return Some(open_pos + 1 + i);
-                }
+                depth == 0
+            } =>
+            {
+                return Some(open + 1 + i);
             }
             _ => {}
         }
@@ -268,111 +165,46 @@ fn find_matching_paren(s: &str, open_pos: usize) -> Option<usize> {
     None
 }
 
-/// Find the last type name in a typedef (after the last space outside brackets/templates)
 fn find_last_type_in_typedef(s: &str) -> &str {
-    let mut bracket_depth: i32 = 0;
-    let mut angle_depth: i32 = 0;
-    let mut paren_depth: i32 = 0;
-    let mut last_space_outside = None;
-
+    let mut depths = (0i32, 0i32, 0i32);
+    let mut last_space = None;
     for (i, ch) in s.char_indices() {
         match ch {
-            '<' => angle_depth += 1,
-            '>' => angle_depth = angle_depth.saturating_sub(1),
-            '(' => paren_depth += 1,
-            ')' => paren_depth = paren_depth.saturating_sub(1),
-            '[' => bracket_depth += 1,
-            ']' => bracket_depth = bracket_depth.saturating_sub(1),
-            ' ' if angle_depth == 0 && paren_depth == 0 && bracket_depth == 0 => {
-                last_space_outside = Some(i);
-            }
+            '<' => depths.0 += 1,
+            '>' => depths.0 = depths.0.saturating_sub(1),
+            '(' => depths.1 += 1,
+            ')' => depths.1 = depths.1.saturating_sub(1),
+            '[' => depths.2 += 1,
+            ']' => depths.2 = depths.2.saturating_sub(1),
+            ' ' if depths == (0, 0, 0) => last_space = Some(i),
             _ => {}
         }
     }
-
-    if let Some(pos) = last_space_outside {
-        s[pos + 1..].trim()
-    } else {
-        s
-    }
+    last_space.map(|p| s[p + 1..].trim()).unwrap_or(s)
 }
 
-/// Find the position of a separator character outside of template brackets
-/// For ':' separator, only matches single ':' not followed by another ':'
-fn find_type_separator(s: &str, separator: char) -> Option<usize> {
-    let mut angle_depth: i32 = 0;
+fn find_type_separator(s: &str, sep: char) -> Option<usize> {
+    let mut depth = 0;
     let chars: Vec<char> = s.chars().collect();
-
     for (i, &ch) in chars.iter().enumerate() {
         match ch {
-            '<' => angle_depth += 1,
-            '>' => angle_depth = angle_depth.saturating_sub(1),
-            c if c == separator && angle_depth == 0 => {
-                // If separator is ':', make sure it's not part of '::'
-                if separator == ':' {
-                    // Check if the previous char is ':'
-                    let prev_is_colon = i > 0 && chars[i - 1] == ':';
-                    // Check if the next char is ':'
-                    let next_is_colon = i + 1 < chars.len() && chars[i + 1] == ':';
-
-                    // Only match if it's a standalone ':'
-                    if !prev_is_colon && !next_is_colon {
-                        return s.char_indices().nth(i).map(|(pos, _)| pos);
+            '<' => depth += 1,
+            '>' => depth -= 1,
+            c if c == sep && depth == 0 => {
+                if sep == ':' {
+                    let prev = i > 0 && chars[i - 1] == ':';
+                    let next = i + 1 < chars.len() && chars[i + 1] == ':';
+                    if !prev && !next {
+                        return s.char_indices().nth(i).map(|(p, _)| p);
                     }
                 } else {
-                    return s.char_indices().nth(i).map(|(pos, _)| pos);
+                    return s.char_indices().nth(i).map(|(p, _)| p);
                 }
             }
             _ => {}
         }
     }
-
     None
-}
-
-/// Splits a C++ qualified name by `::` while preserving content within template brackets.
-///
-/// This function correctly handles nested templates and ensures that `::` within
-/// template parameters are not used as split points.
-fn split_by_scope_resolution(path: &str) -> Vec<String> {
-    let mut parts = Vec::new();
-    let mut current = String::new();
-    let mut bracket_depth: i32 = 0;
-    let mut chars = path.chars().peekable();
-
-    while let Some(ch) = chars.next() {
-        match ch {
-            '<' => {
-                bracket_depth += 1;
-                current.push(ch);
-            }
-            '>' => {
-                bracket_depth = bracket_depth.saturating_sub(1);
-                current.push(ch);
-            }
-            ':' if bracket_depth == 0 => {
-                // Check if this is part of ::
-                if chars.peek() == Some(&':') {
-                    chars.next(); // consume the second :
-                    if !current.is_empty() {
-                        parts.push(current.trim().to_string());
-                        current = String::new();
-                    }
-                } else {
-                    current.push(ch);
-                }
-            }
-            _ => {
-                current.push(ch);
-            }
-        }
-    }
-
-    if !current.is_empty() {
-        parts.push(current.trim().to_string());
-    }
-
-    parts
 }
 
 #[cfg(test)]

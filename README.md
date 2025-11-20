@@ -1,15 +1,16 @@
 # IDA C Splitter
 
-A tool that takes an IDA Hex-Rays decompiler full-executable C export and splits it into a navigable file tree.
+Splits IDA Hex-Rays decompiler C/C++ exports into navigable file trees organized by namespace hierarchy.
 
 ## What It Does
 
-When you export a full executable as C code from IDA's Hex-Rays decompiler, you get a single massive file. This tool:
+IDA's Hex-Rays decompiler exports executables as monolithic C/C++ files. This tool:
 
-1. Parses the IDA C export file
-2. Identifies individual functions and their namespaces
-3. Creates a directory structure based on namespace/class hierarchy
-4. Splits functions into separate `.cpp` files for easy navigation
+1. Parses C++ implementation files and optional header files from IDA
+2. Extracts functions and type definitions with their namespace/class hierarchies
+3. Creates directory structures matching C++ namespace organization
+4. Splits content into separate `.cpp` and `.h` files for easy navigation
+5. Groups nested types with their parent types for better organization
 
 ## Installation
 
@@ -22,52 +23,63 @@ cargo install --path .
 Basic usage:
 
 ```bash
-ida-c-splitter path/to/ida_export.c
+ida-c-splitter implementation.cpp
 ```
 
-Specify a custom output directory:
+With header file:
 
 ```bash
-ida-c-splitter path/to/ida_export.c --output path/to/output_dir
+ida-c-splitter implementation.cpp --header types.h
 ```
 
-If you don't specify an output directory, it defaults to `./output`.
+Custom output directory:
+
+```bash
+ida-c-splitter implementation.cpp --header types.h --output split_code
+```
+
+Default output directory is `./output`.
 
 ### Examples
 
 ```bash
-# Split an IDA export into the default 'output' directory
-ida-c-splitter decompiled.c
+# Process implementation file only
+ida-c-splitter game.cpp
 
-# Specify a custom output directory
-ida-c-splitter decompiled.c -o split_code
+# Process both header and implementation
+ida-c-splitter game.cpp --header game.h
 
-# Enable debug logging
-RUST_LOG=debug ida-c-splitter decompiled.c
+# Custom output with debug logging
+RUST_LOG=debug ida-c-splitter game.cpp --header game.h -o output_dir
 ```
 
 ## Output Structure
 
-The tool creates a file tree based on the function signatures:
+The tool creates organized file trees:
 
-- Functions with full namespaces like `Namespace::Class::Function` create directories for each namespace level
-- Template instantiations are grouped together (e.g., `unique_ptr<Foo>` and `unique_ptr<Bar>` go in the same file)
-- Functions with fewer than 2 namespace segments go into `global.cpp`
-- Data declarations are written to `__data_declarations.cpp`
+- **Namespace hierarchy**: `Namespace::Class::Function` creates `Namespace/Class.cpp`
+- **Header files**: Type definitions from `--header` generate matching `.h` files
+- **Template grouping**: `unique_ptr<Foo>` and `unique_ptr<Bar>` both go in `unique_ptr.cpp`
+- **Nested type fusion**: `Class::NestedClass` groups with parent `Class` in one file
+- **Global functions**: Functions without namespace go to `global.cpp`
+- **Data declarations**: Static data goes to `_data.cpp`
 
-Example output structure:
+Example structure:
 
 ```
 output/
-├── __data_declarations.cpp
+├── _data.cpp
 ├── global.cpp
-├── MyNamespace/
-│   ├── MyClass.cpp
-│   └── Utilities/
-│       └── Helper.cpp
+├── Engine/
+│   ├── Renderer.cpp
+│   ├── Renderer.h
+│   └── Audio/
+│       ├── SoundSystem.cpp
+│       └── SoundSystem.h
 └── std/
     ├── unique_ptr.cpp
-    └── vector.cpp
+    ├── vector.cpp
+    └── string.cpp
 ```
 
 ## Logging
@@ -85,10 +97,14 @@ RUST_LOG=debug ida-c-splitter file.c
 RUST_LOG=trace ida-c-splitter file.c
 ```
 
+## Features
+
+- **Fast**: Memory-mapped I/O and parallel processing via `rayon`
+- **Smart grouping**: Nested types automatically fuse with parent types
+- **Template handling**: Strips template parameters for clean filenames
+- **Cross-platform**: Windows-safe filename sanitization
+- **Comprehensive**: Handles structs, unions, enums, typedefs, and function pointers
+
 ## Performance
 
-The tool uses memory mapping for fast file reading and parallel processing (via `rayon`) for both parsing function signatures and writing output files, making it efficient even for large IDA exports.
-
-## License
-
-See LICENSE file for details.
+Uses memory-mapped file I/O and parallel processing for both parsing and writing, efficiently handling even multi-gigabyte IDA exports.
