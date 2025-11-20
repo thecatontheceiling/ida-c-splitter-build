@@ -165,6 +165,7 @@ fn parse_header_file(mmap: &[u8]) -> HeaderFile {
 ///   - CFile
 ///   - CFile::SFileState
 ///   - CFile::SFileState::EState
+///
 /// Then all three will map to ["CFile"] as their root segments.
 fn build_type_hierarchy(header_file: &HeaderFile) -> HashMap<String, Vec<String>> {
     // Phase 1: Collect all known type names and their segments
@@ -387,13 +388,14 @@ fn create_impl_file_tree(
                 let scope = segments[..segments.len() - 1].join("::");
 
                 // Determine which segments to use for file path
-                let effective_segments: &[String] = if let Some(root_segments) = type_hierarchy.get(&scope) {
-                    // Use root type segments if part of a hierarchy
-                    root_segments
-                } else {
-                    // Use segments[0..n-2] for namespace behavior (class name, not method)
-                    &segments[..segments.len() - 1]
-                };
+                let effective_segments: &[String] =
+                    if let Some(root_segments) = type_hierarchy.get(&scope) {
+                        // Use root type segments if part of a hierarchy
+                        root_segments
+                    } else {
+                        // Use segments[0..n-2] for namespace behavior (class name, not method)
+                        &segments[..segments.len() - 1]
+                    };
 
                 let mut path = output_dir.to_path_buf();
 
