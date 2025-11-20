@@ -1,6 +1,6 @@
 use clap::Parser;
 use rayon::prelude::*;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::ops::Range;
 use std::path::{Path, PathBuf};
 
@@ -154,14 +154,26 @@ fn parse_header_file(mmap: &[u8]) -> HeaderFile {
 
 /// Creates the file tree hierarchy from type definitions
 fn create_header_file_tree(header_file: &HeaderFile, mmap: &[u8], output_dir: &Path) {
-    // Fuse empty_defs and types into a unified iterator of (segments, body)
+    // First, collect all type segments to identify which empty_defs to skip
+    let type_segments: HashSet<Vec<String>> = header_file
+        .types
+        .iter()
+        .map(|(_, type_def)| type_parser::parse_type(type_def))
+        .collect();
+
+    // Keep original order: empty_defs first (filtered), then types
     let items = header_file
         .empty_defs
         .iter()
-        .map(|def| {
+        .filter_map(|def| {
             let def = def.as_str();
             let segments = type_parser::parse_type(def.strip_suffix(";").unwrap_or(def));
-            (segments, def)
+            // Skip if this segment already exists in types
+            if type_segments.contains(&segments) {
+                None
+            } else {
+                Some((segments, def))
+            }
         })
         .chain(header_file.types.iter().map(|(range, type_def)| {
             let segments = type_parser::parse_type(type_def);
