@@ -9570,13 +9570,13 @@ fn test_type_855() {
 #[test]
 fn test_type_856() {
     let result = parse_type("typedef _ENLISTMENT_CRM_INFORMATION *PENLISTMENT_CRM_INFORMATION;");
-    assert_eq!(result, vec!["*PENLISTMENT_CRM_INFORMATION"]);
+    assert_eq!(result, vec!["PENLISTMENT_CRM_INFORMATION"]);
 }
 
 #[test]
 fn test_type_857() {
     let result = parse_type("typedef _EXCEPTION_RECORD *LPEXCEPTION_RECORD;");
-    assert_eq!(result, vec!["*LPEXCEPTION_RECORD"]);
+    assert_eq!(result, vec!["LPEXCEPTION_RECORD"]);
 }
 
 #[test]
@@ -9594,7 +9594,7 @@ fn test_type_859() {
 #[test]
 fn test_type_860() {
     let result = parse_type("typedef _OSVERSIONINFOW *POSVERSIONINFO;");
-    assert_eq!(result, vec!["*POSVERSIONINFO"]);
+    assert_eq!(result, vec!["POSVERSIONINFO"]);
 }
 
 #[test]
@@ -9606,7 +9606,7 @@ fn test_type_861() {
 #[test]
 fn test_type_862() {
     let result = parse_type("typedef _STARTUPINFOW *LPSTARTUPINFO;");
-    assert_eq!(result, vec!["*LPSTARTUPINFO"]);
+    assert_eq!(result, vec!["LPSTARTUPINFO"]);
 }
 
 #[test]
@@ -9618,13 +9618,13 @@ fn test_type_863() {
 #[test]
 fn test_type_864() {
     let result = parse_type("typedef _TAPE_WMI_OPERATIONS *PTAPE_WMI_OPERATIONS;");
-    assert_eq!(result, vec!["*PTAPE_WMI_OPERATIONS"]);
+    assert_eq!(result, vec!["PTAPE_WMI_OPERATIONS"]);
 }
 
 #[test]
 fn test_type_865() {
     let result = parse_type("typedef _TAPE_WRITE_MARKS *PTAPE_WRITE_MARKS;");
-    assert_eq!(result, vec!["*PTAPE_WRITE_MARKS"]);
+    assert_eq!(result, vec!["PTAPE_WRITE_MARKS"]);
 }
 
 #[test]
@@ -9632,13 +9632,13 @@ fn test_type_866() {
     let result = parse_type(
         "typedef _TRANSACTIONMANAGER_LOG_INFORMATION *PTRANSACTIONMANAGER_LOG_INFORMATION;",
     );
-    assert_eq!(result, vec!["*PTRANSACTIONMANAGER_LOG_INFORMATION"]);
+    assert_eq!(result, vec!["PTRANSACTIONMANAGER_LOG_INFORMATION"]);
 }
 
 #[test]
 fn test_type_867() {
     let result = parse_type("typedef _UNIVERSAL_NAME_INFOW *LPUNIVERSAL_NAME_INFOW;");
-    assert_eq!(result, vec!["*LPUNIVERSAL_NAME_INFOW"]);
+    assert_eq!(result, vec!["LPUNIVERSAL_NAME_INFOW"]);
 }
 
 #[test]
@@ -9746,7 +9746,7 @@ fn test_type_884() {
 #[test]
 fn test_type_885() {
     let result = parse_type("typedef arith_entropy_decoder *arith_entropy_ptr;");
-    assert_eq!(result, vec!["*arith_entropy_ptr"]);
+    assert_eq!(result, vec!["arith_entropy_ptr"]);
 }
 
 #[test]
@@ -9759,10 +9759,7 @@ fn test_type_886() {
 #[test]
 fn test_type_887() {
     let result = parse_type("typedef bool (__fastcall *PredicateFunctionType)(hkVariant);");
-    assert_eq!(
-        result,
-        vec!["(__fastcall *PredicateFunctionType)(hkVariant)"]
-    );
+    assert_eq!(result, vec!["PredicateFunctionType"]);
 }
 
 #[test]
@@ -9776,31 +9773,31 @@ fn test_type_888() {
 #[test]
 fn test_type_889() {
     let result = parse_type("typedef CEm *PEM;");
-    assert_eq!(result, vec!["*PEM"]);
+    assert_eq!(result, vec!["PEM"]);
 }
 
 #[test]
 fn test_type_890() {
     let result = parse_type("typedef const char *PCTSTR;");
-    assert_eq!(result, vec!["*PCTSTR"]);
+    assert_eq!(result, vec!["PCTSTR"]);
 }
 
 #[test]
 fn test_type_891() {
     let result = parse_type("typedef const png_sPLT_struct *png_const_sPLT_tp;");
-    assert_eq!(result, vec!["*png_const_sPLT_tp"]);
+    assert_eq!(result, vec!["png_const_sPLT_tp"]);
 }
 
 #[test]
 fn test_type_892() {
     let result = parse_type("typedef const wchar_t *PCUWSTR;");
-    assert_eq!(result, vec!["*PCUWSTR"]);
+    assert_eq!(result, vec!["PCUWSTR"]);
 }
 
 #[test]
 fn test_type_893() {
     let result = parse_type("typedef DIPROPHEADER *LPDIPROPHEADER;");
-    assert_eq!(result, vec!["*LPDIPROPHEADER"]);
+    assert_eq!(result, vec!["LPDIPROPHEADER"]);
 }
 
 #[test]
@@ -9817,7 +9814,7 @@ fn test_type_894() {
 #[test]
 fn test_type_895() {
     let result = parse_type("typedef HIMCC__ *HIMCC;");
-    assert_eq!(result, vec!["*HIMCC"]);
+    assert_eq!(result, vec!["HIMCC"]);
 }
 
 #[test]
@@ -10290,7 +10287,7 @@ fn test_type_935() {
 #[test]
 fn test_type_936() {
     let result = parse_type("typedef IDirectInputEffect *LPDIRECTINPUTEFFECT;");
-    assert_eq!(result, vec!["*LPDIRECTINPUTEFFECT"]);
+    assert_eq!(result, vec!["LPDIRECTINPUTEFFECT"]);
 }
 
 #[test]
@@ -10349,7 +10346,7 @@ fn test_type_943() {
 #[test]
 fn test_type_944() {
     let result = parse_type("typedef PPM_WMI_IDLE_STATE *PPPM_WMI_IDLE_STATE;");
-    assert_eq!(result, vec!["*PPPM_WMI_IDLE_STATE"]);
+    assert_eq!(result, vec!["PPPM_WMI_IDLE_STATE"]);
 }
 
 #[test]
@@ -10536,7 +10533,7 @@ fn test_type_955() {
 #[test]
 fn test_type_956() {
     let result = parse_type("typedef SHttpServer *HHttpServer;");
-    assert_eq!(result, vec!["*HHttpServer"]);
+    assert_eq!(result, vec!["HHttpServer"]);
 }
 
 #[test]
@@ -10737,19 +10734,19 @@ fn test_type_970() {
 #[test]
 fn test_type_971() {
     let result = parse_type("typedef tagCOMPOSITIONFORM *LPCOMPOSITIONFORM;");
-    assert_eq!(result, vec!["*LPCOMPOSITIONFORM"]);
+    assert_eq!(result, vec!["LPCOMPOSITIONFORM"]);
 }
 
 #[test]
 fn test_type_972() {
     let result = parse_type("typedef tagDRAWITEMSTRUCT *PDRAWITEMSTRUCT;");
-    assert_eq!(result, vec!["*PDRAWITEMSTRUCT"]);
+    assert_eq!(result, vec!["PDRAWITEMSTRUCT"]);
 }
 
 #[test]
 fn test_type_973() {
     let result = parse_type("typedef tagHW_PROFILE_INFOA *LPHW_PROFILE_INFOA;");
-    assert_eq!(result, vec!["*LPHW_PROFILE_INFOA"]);
+    assert_eq!(result, vec!["LPHW_PROFILE_INFOA"]);
 }
 
 #[test]
@@ -10773,7 +10770,7 @@ fn test_type_976() {
 #[test]
 fn test_type_977() {
     let result = parse_type("typedef unsigned __int16 **png_uint_16pp;");
-    assert_eq!(result, vec!["**png_uint_16pp"]);
+    assert_eq!(result, vec!["png_uint_16pp"]);
 }
 
 #[test]
@@ -10791,7 +10788,7 @@ fn test_type_979() {
 #[test]
 fn test_type_980() {
     let result = parse_type("typedef unsigned __int8 *PUCHAR;");
-    assert_eq!(result, vec!["*PUCHAR"]);
+    assert_eq!(result, vec!["PUCHAR"]);
 }
 
 #[test]
@@ -10821,19 +10818,19 @@ fn test_type_984() {
 #[test]
 fn test_type_985() {
     let result = parse_type("typedef void (__fastcall *GFSDK_WAVEWORKS_FREE)(void *);");
-    assert_eq!(result, vec!["(__fastcall *GFSDK_WAVEWORKS_FREE)(void *)"]);
+    assert_eq!(result, vec!["GFSDK_WAVEWORKS_FREE"]);
 }
 
 #[test]
 fn test_type_986() {
     let result = parse_type("typedef void **PHANDLE;");
-    assert_eq!(result, vec!["**PHANDLE"]);
+    assert_eq!(result, vec!["PHANDLE"]);
 }
 
 #[test]
 fn test_type_987() {
     let result = parse_type("typedef XML_ParserStruct *XML_Parser;");
-    assert_eq!(result, vec!["*XML_Parser"]);
+    assert_eq!(result, vec!["XML_Parser"]);
 }
 
 #[test]

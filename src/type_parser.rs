@@ -79,7 +79,27 @@ fn parse_typedef(type_def: &str) -> Vec<String> {
 
     // Find the last space outside of template brackets and parentheses
     // This separates the old type from the new type
-    let type_name = find_last_type_in_typedef(rest);
+    let mut type_name = find_last_type_in_typedef(rest);
+
+    // Handle function pointers: typedef RET (*NAME)(ARGS)
+    // or typedef RET (__convention *NAME)(ARGS)
+    // The name is after the * inside the first parentheses
+    if type_name.starts_with('(') && type_name.contains('*') {
+        // Find the * inside the first set of parentheses
+        if let Some(star_pos) = type_name.find('*') {
+            let after_star = &type_name[star_pos + 1..];
+            // Find the closing ) after the name
+            if let Some(end) = after_star.find(')') {
+                type_name = after_star[..end].trim();
+            }
+        }
+    } else {
+        // For simple pointers, strip leading * and & characters
+        type_name = type_name
+            .trim_start_matches('*')
+            .trim_start_matches('&')
+            .trim();
+    }
 
     // Now split by :: while preserving templates
     split_by_scope_resolution(type_name)
