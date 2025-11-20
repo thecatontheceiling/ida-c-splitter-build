@@ -203,7 +203,11 @@ fn create_header_file_tree(header_file: &HeaderFile, mmap: &[u8], output_dir: &P
                 panic!("{:?} {:?}", segments, body);
             }
             let stripped = strip_template_params(&segments[segments.len() - 1]);
-            let filename = format!("{}.h", sanitize_filename(stripped));
+            let target_filename = sanitize_filename(stripped);
+            let target_filename = target_filename
+                .strip_suffix("_vtbl")
+                .unwrap_or(&target_filename);
+            let filename = format!("{target_filename}.h");
             path.push(filename);
             path
         };
