@@ -62,11 +62,13 @@ fn parse_typedef(def: &str) -> Vec<String> {
         .trim_start_matches('&')
         .trim();
 
-    if name.starts_with('(') && name.contains('*')
+    if name.starts_with('(')
+        && name.contains('*')
         && let Some(star) = name.find('*')
-            && let Some(end) = name[star + 1..].find(')') {
-                name = name[star + 1..star + 1 + end].trim();
-            }
+        && let Some(end) = name[star + 1..].find(')')
+    {
+        name = name[star + 1..star + 1 + end].trim();
+    }
 
     let mut depth = 0;
     for (i, ch) in name.char_indices() {
@@ -124,9 +126,10 @@ fn skip_struct_qualifiers(s: &str) -> &str {
         } else if rest.starts_with("__unaligned ") {
             rest = &rest[12..];
         } else if rest.starts_with("__declspec(")
-            && let Some(close) = find_matching_paren(rest, 10) {
-                rest = rest[close + 1..].trim_start();
-            }
+            && let Some(close) = find_matching_paren(rest, 10)
+        {
+            rest = rest[close + 1..].trim_start();
+        }
 
         if rest == before || rest == before.trim_start() {
             break;
