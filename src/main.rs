@@ -56,9 +56,10 @@ fn main() {
         std::fs::write(
             output.join("__header.h"),
             header_file
-                .types
+                .empty_defs
                 .into_iter()
-                .map(|p| p.1)
+                .map(|s| s.strip_suffix(";").map(|s| s.to_string()).unwrap_or(s))
+                .chain(header_file.types.into_iter().map(|p| p.1))
                 .collect::<Vec<String>>()
                 .join("\n"),
         )
@@ -123,21 +124,37 @@ fn sanitize_filename(name: &str) -> String {
     sanitized
 }
 
+#[derive(Default)]
 struct HeaderFile {
+    empty_defs: Vec<String>,
     types: Vec<(Range<usize>, String)>,
 }
 fn parse_header_file(mmap: &[u8]) -> HeaderFile {
-    let mut output = HeaderFile { types: Vec::new() };
-    let raw_type_starts: Vec<usize> = memchr::memmem::find_iter(mmap, b"/* ").collect();
+    let empty_defs = unsafe {
+        std::str::from_utf8_unchecked(mmap)
+            .lines()
+            .skip_while(|l| {
+                !(l.starts_with("union ") || l.starts_with("struct ") || l.starts_with("enum "))
+            })
+            .take_while(|l| !(l.trim().is_empty() || l.starts_with("/")))
+            .map(|l| l.trim().to_string())
+            .collect()
+    };
+    let mut output = HeaderFile {
+        empty_defs,
+        types: vec![],
+    };
 
+    let raw_type_starts: Vec<usize> = memchr::memmem::find_iter(mmap, b"/* ").collect();
     for (idx, &type_start) in raw_type_starts.iter().enumerate() {
         let type_slice =
             &mmap[type_start..raw_type_starts.get(idx + 1).copied().unwrap_or(mmap.len())];
-        let type_def = std::str::from_utf8(type_slice)
-            .unwrap()
-            .lines()
-            .find(|l| !(l.starts_with("//") || l.starts_with("/*") || l.starts_with("#pragma")))
-            .unwrap();
+        let type_def = unsafe {
+            std::str::from_utf8_unchecked(type_slice)
+                .lines()
+                .find(|l| !(l.starts_with("//") || l.starts_with("/*") || l.starts_with("#pragma")))
+                .unwrap()
+        };
 
         output.types.push((
             type_start..type_start + type_def.len(),
