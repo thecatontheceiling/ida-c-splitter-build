@@ -128,7 +128,7 @@ struct HeaderFile {
 }
 fn parse_header_file(mmap: &[u8]) -> HeaderFile {
     let mut output = HeaderFile { types: Vec::new() };
-    let raw_type_starts: Vec<usize> = memchr::memmem::find_iter(&mmap, b"/* ").collect();
+    let raw_type_starts: Vec<usize> = memchr::memmem::find_iter(mmap, b"/* ").collect();
 
     for (idx, &type_start) in raw_type_starts.iter().enumerate() {
         let type_slice =

@@ -23,7 +23,7 @@ pub fn parse_type(type_def: &str) -> Vec<String> {
     // Determine what kind of type definition this is
     if type_def.starts_with("typedef ") {
         parse_typedef(&type_def)
-    } else if type_def.starts_with("enum ") {
+    } else if type_def.starts_with("enum ") || type_def.starts_with("const enum ") {
         parse_enum(&type_def)
     } else if type_def.starts_with("struct ") || type_def.starts_with("const struct ") {
         parse_struct(&type_def)
@@ -86,15 +86,21 @@ fn parse_typedef(type_def: &str) -> Vec<String> {
 }
 
 /// Parse an enum declaration
-/// Format: enum [namespace::]Name [: underlying_type]
+/// Format: [const] enum [__bitmask] [namespace::]Name [: underlying_type]
 fn parse_enum(type_def: &str) -> Vec<String> {
+    // Remove "const " prefix if present
+    let rest = type_def.strip_prefix("const ").unwrap_or(type_def);
+
     // Remove "enum " prefix
-    let rest = type_def.strip_prefix("enum ").unwrap_or(type_def).trim();
+    let rest = rest.strip_prefix("enum ").unwrap_or(rest).trim();
+
+    // Skip enum qualifiers like __bitmask
+    let rest = skip_enum_qualifiers(rest);
 
     // Split by : to separate the enum name from the underlying type
     // But only if : is not inside template brackets
     let enum_name = if let Some(colon_pos) = find_type_separator(rest, ':') {
-        &rest[..colon_pos].trim()
+        rest[..colon_pos].trim()
     } else {
         rest
     };
@@ -116,7 +122,7 @@ fn parse_struct(type_def: &str) -> Vec<String> {
 
     // Find the struct name (before : or end of string)
     let struct_name = if let Some(colon_pos) = find_type_separator(rest, ':') {
-        &rest[..colon_pos].trim()
+        rest[..colon_pos].trim()
     } else {
         rest
     };
@@ -125,10 +131,13 @@ fn parse_struct(type_def: &str) -> Vec<String> {
 }
 
 /// Parse a union declaration
-/// Format: union Name
+/// Format: union [__declspec(...)] [namespace::]Name
 fn parse_union(type_def: &str) -> Vec<String> {
     // Remove "union " prefix
     let rest = type_def.strip_prefix("union ").unwrap_or(type_def).trim();
+
+    // Skip qualifiers like __declspec(...)
+    let rest = skip_struct_qualifiers(rest);
 
     split_by_scope_resolution(rest)
 }
@@ -154,11 +163,34 @@ fn skip_struct_qualifiers(s: &str) -> &str {
         }
 
         // Skip __declspec(...)
-        if rest.starts_with("__declspec(") {
-            if let Some(close_pos) = find_matching_paren(rest, 10) {
-                rest = &rest[close_pos + 1..].trim_start();
-                continue;
-            }
+        if rest.starts_with("__declspec(")
+            && let Some(close_pos) = find_matching_paren(rest, 10)
+        {
+            rest = rest[close_pos + 1..].trim_start();
+            continue;
+        }
+
+        // If nothing changed, we're done
+        if rest == original || rest == original.trim_start() {
+            break;
+        }
+    }
+
+    rest
+}
+
+/// Skip enum qualifiers like __bitmask
+fn skip_enum_qualifiers(s: &str) -> &str {
+    let mut rest = s;
+
+    loop {
+        let original = rest;
+        rest = rest.trim_start();
+
+        // Skip __bitmask
+        if rest.starts_with("__bitmask ") {
+            rest = &rest[10..];
+            continue;
         }
 
         // If nothing changed, we're done
