@@ -10941,3 +10941,67 @@ fn test_type_998() {
         ]
     );
 }
+
+#[test]
+fn test_type_999() {
+    let result = parse_type(
+        "struct __cppobj __declspec(align(8)) hkLocalArray<hkcdTreeQueries<hkcdTreeQueriesStacks::Dynamic,64,0>::SlotPair<hkcdStaticTree::DefaultTreeStorage6,hkcdStaticTree::DefaultTreeStorage6> > : hkArray<hkcdTreeQueries<hkcdTreeQueriesStacks::Dynamic,64,0>::SlotPair<hkcdStaticTree::DefaultTreeStorage6,hkcdStaticTree::DefaultTreeStorage6>,hkContainerHeapAllocator>",
+    );
+    assert_eq!(
+        result,
+        vec![
+            "hkLocalArray<hkcdTreeQueries<hkcdTreeQueriesStacks::Dynamic,64,0>::SlotPair<hkcdStaticTree::DefaultTreeStorage6,hkcdStaticTree::DefaultTreeStorage6> >"
+        ]
+    );
+}
+
+#[test]
+fn test_type_1000() {
+    let result = parse_type(
+        "struct __cppobj __declspec(align(8)) hkLocalArray<hkcdTreeQueries<hkcdTreeQueriesStacks::Dynamic,64,0>::SlotPair<hknpCompressedMeshShapeTree,hknpCompressedMeshShapeTree> > : hkArray<hkcdTreeQueries<hkcdTreeQueriesStacks::Dynamic,64,0>::SlotPair<hknpCompressedMeshShapeTree,hknpCompressedMeshShapeTree>,hkContainerHeapAllocator>",
+    );
+    assert_eq!(
+        result,
+        vec![
+            "hkLocalArray<hkcdTreeQueries<hkcdTreeQueriesStacks::Dynamic,64,0>::SlotPair<hknpCompressedMeshShapeTree,hknpCompressedMeshShapeTree> >"
+        ]
+    );
+}
+
+#[test]
+fn test_type_1001() {
+    let result = parse_type(
+        "struct __cppobj __declspec(align(8)) hkLocalArray<hkndConnectedPieceGroupsCalculator::Connection> : hkArray<hkndConnectedPieceGroupsCalculator::Connection,hkContainerHeapAllocator>",
+    );
+    assert_eq!(
+        result,
+        vec!["hkLocalArray<hkndConnectedPieceGroupsCalculator::Connection>"]
+    );
+}
+
+#[test]
+fn test_type_1002() {
+    let result = parse_type(
+        "struct __cppobj __declspec(align(8)) hkLocalArray<hkHandle<unsigned short,65535,hkcdPlanarGeomHullImpl::VertexIdDiscriminant> > : hkArray<hkHandle<unsigned short,65535,hkcdPlanarGeomHullImpl::VertexIdDiscriminant>,hkContainerHeapAllocator>",
+    );
+    assert_eq!(
+        result,
+        vec![
+            "hkLocalArray<hkHandle<unsigned short,65535,hkcdPlanarGeomHullImpl::VertexIdDiscriminant> >"
+        ]
+    );
+}
+
+#[test]
+fn test_type_1003() {
+    let result = parse_type(
+        "struct __cppobj hkgpJobQueue::WrapType<hkgpConvexDecompositionImpl::DecomposeJob>",
+    );
+    assert_eq!(
+        result,
+        vec![
+            "hkgpJobQueue",
+            "WrapType<hkgpConvexDecompositionImpl::DecomposeJob>"
+        ]
+    );
+}
