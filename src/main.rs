@@ -159,21 +159,43 @@ fn create_header_file_tree(header_file: &HeaderFile, mmap: &[u8], output_dir: &P
         .empty_defs
         .iter()
         .map(|def| {
-            let segments = type_parser::parse_type(def);
-            (segments, def.clone())
+            let def = def.as_str();
+            let segments = type_parser::parse_type(def.strip_suffix(";").unwrap_or(def));
+            (segments, def)
         })
         .chain(header_file.types.iter().map(|(range, type_def)| {
             let segments = type_parser::parse_type(type_def);
             let body = unsafe { std::str::from_utf8_unchecked(&mmap[range.start..range.end]) };
-            (segments, body.to_string())
+            (segments, body)
         }));
 
     // Group items by their target file path
     let mut file_groups: HashMap<PathBuf, Vec<String>> = HashMap::new();
 
     for (segments, body) in items {
-        let path = get_path_for_segments(&segments, output_dir, ".h");
-        file_groups.entry(path).or_default().push(body);
+        let path = {
+            let mut path = output_dir.to_path_buf();
+
+            // Everything up to n-1 segments become folders (all but the last one)
+            // Strip template parameters to group template instantiations together
+            if segments.len() > 1 {
+                for segment in &segments[..segments.len() - 1] {
+                    let stripped = strip_template_params(segment);
+                    path.push(sanitize_filename(stripped));
+                }
+            }
+
+            // n-1 segment becomes the filename (last)
+            // Strip template parameters so all instantiations go into the same file
+            if segments.is_empty() {
+                panic!("{:?} {:?}", segments, body);
+            }
+            let stripped = strip_template_params(&segments[segments.len() - 1]);
+            let filename = format!("{}.h", sanitize_filename(stripped));
+            path.push(filename);
+            path
+        };
+        file_groups.entry(path).or_default().push(body.to_string());
     }
 
     tracing::info!("Writing {} header files", file_groups.len());
@@ -266,7 +288,30 @@ fn create_impl_file_tree(functions: &[Function], mmap: &[u8], output_dir: &Path)
     let mut file_groups: HashMap<PathBuf, Vec<usize>> = HashMap::new();
 
     for (idx, func) in functions.iter().enumerate() {
-        let path = get_path_for_segments(&func.segments, output_dir, ".cpp");
+        let path = {
+            let segments = &func.segments;
+            if segments.len() < 2 {
+                // Types with < 2 segments go into global.h or global.cpp
+                output_dir.join("global.cpp")
+            } else {
+                let mut path = output_dir.to_path_buf();
+                // Everything up to n-2 segments become folders (all but the last two)
+                // Strip template parameters to group template instantiations together
+                if segments.len() > 2 {
+                    for segment in &segments[..segments.len() - 2] {
+                        let stripped = strip_template_params(segment);
+                        path.push(sanitize_filename(stripped));
+                    }
+                }
+
+                // n-1 segment becomes the filename (second to last)
+                // Strip template parameters so all instantiations go into the same file
+                let stripped = strip_template_params(&segments[segments.len() - 2]);
+                let filename = format!("{}.cpp", sanitize_filename(stripped));
+                path.push(filename);
+                path
+            }
+        };
         file_groups.entry(path).or_default().push(idx);
     }
 
@@ -302,31 +347,6 @@ fn create_impl_file_tree(functions: &[Function], mmap: &[u8], output_dir: &Path)
 
         tracing::debug!("Wrote cpp file: {}", path.display());
     });
-}
-
-/// Helper function to get the file path for a given set of segments
-fn get_path_for_segments(segments: &[String], output_dir: &Path, extension: &str) -> PathBuf {
-    if segments.len() < 2 {
-        // Types with < 2 segments go into global.h or global.cpp
-        output_dir.join(format!("global{}", extension))
-    } else {
-        let mut path = output_dir.to_path_buf();
-        // Everything up to n-2 segments become folders (all but the last two)
-        // Strip template parameters to group template instantiations together
-        if segments.len() > 2 {
-            for segment in &segments[..segments.len() - 2] {
-                let stripped = strip_template_params(segment);
-                path.push(sanitize_filename(stripped));
-            }
-        }
-
-        // n-1 segment becomes the filename (second to last)
-        // Strip template parameters so all instantiations go into the same file
-        let stripped = strip_template_params(&segments[segments.len() - 2]);
-        let filename = format!("{}{}", sanitize_filename(stripped), extension);
-        path.push(filename);
-        path
-    }
 }
 
 /// Strips template parameters from a segment name
