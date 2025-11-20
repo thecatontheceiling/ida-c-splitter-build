@@ -5,6 +5,7 @@ use std::ops::Range;
 use std::path::{Path, PathBuf};
 
 mod signature_parser;
+mod type_parser;
 
 /// Split IDA Hex-Rays decompiler C exports into a navigable file tree
 #[derive(Parser, Debug)]
@@ -20,12 +21,6 @@ struct Args {
     /// Output directory for the split files
     #[arg(short, long, default_value = "output")]
     output: PathBuf,
-}
-
-#[derive(Debug, Clone)]
-struct Function {
-    offset: usize,
-    segments: Vec<String>,
 }
 
 fn main() {
@@ -53,17 +48,9 @@ fn main() {
 
         // Parse header file
         let header_file = parse_header_file(&header_mmap);
-        std::fs::write(
-            output.join("__header.h"),
-            header_file
-                .empty_defs
-                .into_iter()
-                .map(|s| s.strip_suffix(";").map(|s| s.to_string()).unwrap_or(s))
-                .chain(header_file.types.into_iter().map(|p| p.1))
-                .collect::<Vec<String>>()
-                .join("\n"),
-        )
-        .unwrap();
+
+        // Create file tree hierarchy for types and empty_defs
+        create_header_file_tree(&header_file, &header_mmap, output);
     }
 
     // Handle cpp file
@@ -76,7 +63,7 @@ fn main() {
         let cpp_file = parse_cpp_file(&cpp_mmap);
 
         // Create file tree hierarchy
-        create_file_tree(&cpp_file.functions, &cpp_mmap, output);
+        create_impl_file_tree(&cpp_file.functions, &cpp_mmap, output);
 
         // Write data declarations
         tracing::info!("Writing data declarations");
@@ -124,7 +111,7 @@ fn sanitize_filename(name: &str) -> String {
     sanitized
 }
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 struct HeaderFile {
     empty_defs: Vec<String>,
     types: Vec<(Range<usize>, String)>,
@@ -157,7 +144,7 @@ fn parse_header_file(mmap: &[u8]) -> HeaderFile {
         };
 
         output.types.push((
-            type_start..type_start + type_def.len(),
+            type_start..type_start + type_slice.len(),
             type_def.to_string(),
         ));
     }
@@ -165,9 +152,59 @@ fn parse_header_file(mmap: &[u8]) -> HeaderFile {
     output
 }
 
+/// Creates the file tree hierarchy from type definitions
+fn create_header_file_tree(header_file: &HeaderFile, mmap: &[u8], output_dir: &Path) {
+    // Fuse empty_defs and types into a unified iterator of (segments, body)
+    let items = header_file
+        .empty_defs
+        .iter()
+        .map(|def| {
+            let segments = type_parser::parse_type(def);
+            (segments, def.clone())
+        })
+        .chain(header_file.types.iter().map(|(range, type_def)| {
+            let segments = type_parser::parse_type(type_def);
+            let body = unsafe { std::str::from_utf8_unchecked(&mmap[range.start..range.end]) };
+            (segments, body.to_string())
+        }));
+
+    // Group items by their target file path
+    let mut file_groups: HashMap<PathBuf, Vec<String>> = HashMap::new();
+
+    for (segments, body) in items {
+        let path = get_path_for_segments(&segments, output_dir, ".h");
+        file_groups.entry(path).or_default().push(body);
+    }
+
+    tracing::info!("Writing {} header files", file_groups.len());
+
+    // Write each file in parallel using rayon
+    file_groups.par_iter().for_each(|(path, bodies)| {
+        // Create parent directories
+        if let Some(parent) = path.parent() {
+            std::fs::create_dir_all(parent).expect("Failed to create directory structure");
+        }
+
+        // Combine all bodies for this file
+        let file_content = bodies.join("\n");
+
+        // Write the file
+        std::fs::write(path, file_content)
+            .unwrap_or_else(|e| panic!("Failed to write file {:?}: {}", path, e));
+
+        tracing::debug!("Wrote header file: {}", path.display());
+    });
+}
+
+#[derive(Default, Debug)]
 struct CppFile {
     data_declarations: Range<usize>,
     functions: Vec<Function>,
+}
+#[derive(Debug, Clone)]
+struct Function {
+    offset: usize,
+    segments: Vec<String>,
 }
 fn parse_cpp_file(mmap: &[u8]) -> CppFile {
     // Find section markers
@@ -223,47 +260,17 @@ fn parse_cpp_file(mmap: &[u8]) -> CppFile {
     }
 }
 
-/// Strips template parameters from a segment name
-/// e.g., "unique_ptr<CResourceLoader>" -> "unique_ptr"
-fn strip_template_params(segment: &str) -> &str {
-    segment
-        .find('<')
-        .map(|pos| &segment[..pos])
-        .unwrap_or(segment)
-}
-
 /// Creates the file tree hierarchy from function definitions
-fn create_file_tree(functions: &[Function], mmap: &[u8], output_dir: &Path) {
+fn create_impl_file_tree(functions: &[Function], mmap: &[u8], output_dir: &Path) {
     // Group functions by their target file path
     let mut file_groups: HashMap<PathBuf, Vec<usize>> = HashMap::new();
 
     for (idx, func) in functions.iter().enumerate() {
-        let path = if func.segments.len() < 2 {
-            // Functions with < 2 segments go into global.cpp
-            output_dir.join("global.cpp")
-        } else {
-            let mut path = output_dir.to_path_buf();
-            // Everything up to n-2 segments become folders (all but the last two)
-            // Strip template parameters to group template instantiations together
-            if func.segments.len() > 2 {
-                for segment in &func.segments[..func.segments.len() - 2] {
-                    let stripped = strip_template_params(segment);
-                    path.push(sanitize_filename(stripped));
-                }
-            }
-
-            // n-1 segment becomes the .cpp filename (second to last)
-            // Strip template parameters so all instantiations go into the same file
-            let stripped = strip_template_params(&func.segments[func.segments.len() - 2]);
-            let filename = format!("{}.cpp", sanitize_filename(stripped));
-            path.push(filename);
-            path
-        };
-
+        let path = get_path_for_segments(&func.segments, output_dir, ".cpp");
         file_groups.entry(path).or_default().push(idx);
     }
 
-    tracing::info!("Writing {} files", file_groups.len());
+    tracing::info!("Writing {} cpp files", file_groups.len());
 
     // Write each file in parallel using rayon
     file_groups.par_iter().for_each(|(path, indices)| {
@@ -293,6 +300,40 @@ fn create_file_tree(functions: &[Function], mmap: &[u8], output_dir: &Path) {
         std::fs::write(path, file_content)
             .unwrap_or_else(|e| panic!("Failed to write file {:?}: {}", path, e));
 
-        tracing::debug!("Wrote file: {}", path.display());
+        tracing::debug!("Wrote cpp file: {}", path.display());
     });
+}
+
+/// Helper function to get the file path for a given set of segments
+fn get_path_for_segments(segments: &[String], output_dir: &Path, extension: &str) -> PathBuf {
+    if segments.len() < 2 {
+        // Types with < 2 segments go into global.h or global.cpp
+        output_dir.join(format!("global{}", extension))
+    } else {
+        let mut path = output_dir.to_path_buf();
+        // Everything up to n-2 segments become folders (all but the last two)
+        // Strip template parameters to group template instantiations together
+        if segments.len() > 2 {
+            for segment in &segments[..segments.len() - 2] {
+                let stripped = strip_template_params(segment);
+                path.push(sanitize_filename(stripped));
+            }
+        }
+
+        // n-1 segment becomes the filename (second to last)
+        // Strip template parameters so all instantiations go into the same file
+        let stripped = strip_template_params(&segments[segments.len() - 2]);
+        let filename = format!("{}{}", sanitize_filename(stripped), extension);
+        path.push(filename);
+        path
+    }
+}
+
+/// Strips template parameters from a segment name
+/// e.g., "unique_ptr<CResourceLoader>" -> "unique_ptr"
+fn strip_template_params(segment: &str) -> &str {
+    segment
+        .find('<')
+        .map(|pos| &segment[..pos])
+        .unwrap_or(segment)
 }
