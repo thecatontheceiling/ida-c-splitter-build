@@ -2,6 +2,8 @@
 
 Splits IDA Hex-Rays decompiler C/C++ exports into navigable file trees organized by namespace hierarchy.
 
+Developed by yours truly and Claude. I promise I have actually tested this, and that it does actually work.
+
 ## What It Does
 
 IDA's Hex-Rays decompiler exports executables as monolithic C/C++ files. This tool:
@@ -15,30 +17,28 @@ IDA's Hex-Rays decompiler exports executables as monolithic C/C++ files. This to
 ## Installation
 
 ```bash
-cargo install --path .
+cargo install --git https://github.com/ferrobrew/ida-c-splitter.git
 ```
 
 ## Usage
 
-Basic usage:
+Pass an IDA export to the tool; this will output a file tree in `./output`.
 
 ```bash
-ida-c-splitter implementation.cpp
+ida-c-splitter implementation.c
 ```
 
-With header file:
+For best results, combine this with the IDA header export. The header contains type definitions that enable proper nested type grouping and hierarchy resolution. Without it, nested types (like `Class::NestedClass`) may be split into separate files instead of being grouped with their parent types.
 
 ```bash
-ida-c-splitter implementation.cpp --header types.h
+ida-c-splitter implementation.c --header types.h
 ```
 
-Custom output directory:
+Set a custom output directory:
 
 ```bash
-ida-c-splitter implementation.cpp --header types.h --output split_code
+ida-c-splitter implementation.c --header types.h --output project
 ```
-
-Default output directory is `./output`.
 
 ### Examples
 
@@ -52,8 +52,6 @@ ida-c-splitter game.cpp --header game.h
 # Custom output with debug logging
 RUST_LOG=debug ida-c-splitter game.cpp --header game.h -o output_dir
 ```
-
-**Note:** For best results, include the header file with `--header`. The header contains type definitions that enable proper nested type grouping and hierarchy resolution. Without it, nested types (like `Class::NestedClass`) may be split into separate files instead of being grouped with their parent types.
 
 ## Output Structure
 
@@ -83,30 +81,3 @@ output/
     ├── vector.cpp
     └── string.cpp
 ```
-
-## Logging
-
-The tool uses `tracing` for logging. Control verbosity with the `RUST_LOG` environment variable:
-
-```bash
-# Info level (default)
-RUST_LOG=info ida-c-splitter file.c
-
-# Debug level (shows individual file writes)
-RUST_LOG=debug ida-c-splitter file.c
-
-# Trace level (very verbose)
-RUST_LOG=trace ida-c-splitter file.c
-```
-
-## Features
-
-- **Fast**: Memory-mapped I/O and parallel processing via `rayon`
-- **Smart grouping**: Nested types automatically fuse with parent types
-- **Template handling**: Strips template parameters for clean filenames
-- **Cross-platform**: Windows-safe filename sanitization
-- **Comprehensive**: Handles structs, unions, enums, typedefs, and function pointers
-
-## Performance
-
-Uses memory-mapped file I/O and parallel processing for both parsing and writing, efficiently handling even multi-gigabyte IDA exports.
